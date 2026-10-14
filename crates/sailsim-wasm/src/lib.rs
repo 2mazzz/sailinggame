@@ -3,8 +3,12 @@ use wasm_bindgen::prelude::*;
 
 /// Fields of the snapshot returned by `Game::snapshot`, in order.
 /// x, y (m), heading, heel (rad), surge, sway (m/s), yaw_rate (rad/s),
-/// apparent wind angle (rad), apparent wind speed (m/s), capsized (0/1), time (s).
-const SNAPSHOT_LEN: usize = 11;
+/// apparent wind angle (rad), apparent wind speed (m/s), capsized (0/1), time (s),
+/// live true wind speed incl. gusts (m/s).
+const SNAPSHOT_LEN: usize = 12;
+
+/// Gust strength (fraction of the mean wind) the viewer starts with.
+const DEFAULT_GUST_INTENSITY: f64 = 0.3;
 
 /// The browser's handle on the simulation: owns a `Sim` and runs it at its
 /// fixed step, however long the frame was.
@@ -16,6 +20,23 @@ pub struct Game {
     time: f64,
     pending: f64,
     capsize_enabled: bool,
+    gust_intensity: f64,
+}
+
+impl Game {
+    fn rebuild(&mut self) {
+        self.sim = Sim::new(SimConfig {
+            capsize_enabled: self.capsize_enabled,
+            gust_intensity: self.gust_intensity,
+            seed: 1,
+            ..SimConfig::default()
+        });
+        self.sim.reset(self.scenario);
+        self.sim
+            .set_wind(self.scenario.true_wind_speed, self.scenario.true_wind_dir);
+        self.time = 0.0;
+        self.pending = 0.0;
+    }
 }
 
 #[wasm_bindgen]
@@ -23,7 +44,11 @@ impl Game {
     /// Wind direction is in degrees clockwise from north, where it blows from.
     #[wasm_bindgen(constructor)]
     pub fn new(wind_speed: f64, wind_dir_deg: f64) -> Game {
-        let config = SimConfig::default();
+        let config = SimConfig {
+            gust_intensity: DEFAULT_GUST_INTENSITY,
+            seed: 1,
+            ..SimConfig::default()
+        };
         let scenario = Scenario {
             true_wind_speed: wind_speed,
             true_wind_dir: wind_dir_deg.to_radians(),
@@ -44,6 +69,7 @@ impl Game {
             time: 0.0,
             pending: 0.0,
             capsize_enabled: true,
+            gust_intensity: DEFAULT_GUST_INTENSITY,
         }
     }
 
@@ -56,13 +82,17 @@ impl Game {
     /// Capsize ends the run when on; off lets you learn trim without flipping.
     pub fn set_capsize_enabled(&mut self, enabled: bool) {
         self.capsize_enabled = enabled;
-        self.sim = Sim::new(SimConfig {
-            capsize_enabled: enabled,
-            ..SimConfig::default()
-        });
-        self.sim.reset(self.scenario);
-        self.time = 0.0;
-        self.pending = 0.0;
+        self.rebuild();
+    }
+
+    /// Gust strength as a fraction of the mean wind (0 = steady); restarts the run.
+    pub fn set_gust_intensity(&mut self, intensity: f64) {
+        self.gust_intensity = intensity.clamp(0.0, 0.9);
+        self.rebuild();
+    }
+
+    pub fn gust_intensity(&self) -> f64 {
+        self.gust_intensity
     }
 
     pub fn capsize_enabled(&self) -> bool {
@@ -107,6 +137,7 @@ impl Game {
             obs.apparent_wind_speed,
             if status == Status::Capsized { 1.0 } else { 0.0 },
             self.time,
+            self.sim.wind_speed(),
         ]
     }
 

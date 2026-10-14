@@ -59,6 +59,10 @@ pub struct BoatParams {
     /// Centreboard (plus hull and rudder lateral area), area in m^2.
     pub board: FoilParams,
     pub board_area: f64,
+    /// Low-speed sideways resistance (N s/m), fading out as surge speed
+    /// approaches several times `low_speed_lateral_speed` (m/s).
+    pub low_speed_lateral_damping: f64,
+    pub low_speed_lateral_speed: f64,
 }
 
 impl BoatParams {
@@ -82,6 +86,8 @@ impl BoatParams {
                 plate_normal: 1.1,
             },
             board_area: 0.15,
+            low_speed_lateral_damping: 400.0,
+            low_speed_lateral_speed: 0.5,
             // Source: Day and Nixon (2014) benchmark all-up mass, hull plus rig plus foils plus crew (was 140 kg). Confidence: high.
             displacement_mass: 160.0,
             righting_arm_max: 0.45,
