@@ -18,6 +18,10 @@ pub fn board_force(params: &BoatParams, surge: f64, sway: f64) -> (f64, f64) {
     if speed < 1e-6 {
         return (0.0, 0.0);
     }
+    // Viscous hull/board side force that matters only when there is no
+    // forward flow over the board (a stalled foil has little lift of its own).
+    let flow_ratio = surge / params.low_speed_lateral_speed;
+    let low_speed_sway = -params.low_speed_lateral_damping * sway / (1.0 + flow_ratio * flow_ratio);
     let alpha = sway.abs().atan2(surge.abs());
     let (cl, cd) = foil::coefficients(&params.board, alpha);
     let q_s = 0.5 * WATER_DENSITY * speed * speed * params.board_area;
@@ -29,7 +33,7 @@ pub fn board_force(params: &BoatParams, surge: f64, sway: f64) -> (f64, f64) {
     let drag_dir = (-surge / speed, -sway / speed);
     (
         q_s * (cl * lift_dir.0 + cd * drag_dir.0),
-        q_s * (cl * lift_dir.1 + cd * drag_dir.1),
+        q_s * (cl * lift_dir.1 + cd * drag_dir.1) + low_speed_sway,
     )
 }
 
