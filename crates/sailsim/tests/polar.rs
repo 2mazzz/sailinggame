@@ -3,7 +3,7 @@ use sailsim::{Controls, Scenario, Sim, SimConfig};
 /// Steady speed after 90 s on a heading `twa` degrees off a 6 m/s wind
 /// (wind from the starboard side), with the sheet at `sheet`.
 fn steady_speed(twa_deg: f64, sheet: f64) -> f64 {
-    let mut sim = Sim::new(SimConfig::default());
+    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
     sim.reset(Scenario {
         true_wind_speed: 6.0,
         true_wind_dir: twa_deg.to_radians(),

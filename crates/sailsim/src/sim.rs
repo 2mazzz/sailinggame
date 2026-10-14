@@ -1,5 +1,5 @@
 use crate::aero::{apparent_wind, sail_force};
-use crate::hydro::{board_force, hull_resistance};
+use crate::hydro::{board_force, hull_resistance, rudder_force};
 use crate::integrator::rk4;
 use crate::params::BoatParams;
 use crate::stability::righting_moment;
@@ -10,11 +10,13 @@ pub struct SimConfig {
     pub dt: f64,
     pub seed: u64,
     pub capsize_enabled: bool,
+    /// Lock the heading (no yaw): for tests and for curricula that learn sail trim first.
+    pub fixed_heading: bool,
 }
 
 impl Default for SimConfig {
     fn default() -> Self {
-        Self { dt: 0.02, seed: 0, capsize_enabled: true }
+        Self { dt: 0.02, seed: 0, capsize_enabled: true, fixed_heading: false }
     }
 }
 
@@ -78,27 +80,38 @@ impl Sim {
             return StepOutput { state: self.state, status: self.status };
         }
         let s = &self.state;
-        let y = [s.x, s.y, s.heading, s.surge, s.sway, s.heel, s.heel_rate];
+        let y = [s.x, s.y, s.heading, s.surge, s.sway, s.heel, s.heel_rate, s.yaw_rate];
         let params = self.params;
         let (wind_speed, wind_dir, sheet) = (self.wind_speed, self.wind_dir, controls.sheet);
+        let (rudder, fixed_heading) = (controls.rudder, self.config.fixed_heading);
         let y = rk4(y, self.config.dt, |y| {
-            let [_, _, heading, surge, sway, heel, heel_rate] = *y;
+            let [_, _, heading, surge, sway, heel, heel_rate, yaw_rate] = *y;
             let wind = apparent_wind(wind_speed, wind_dir, heading, surge, sway);
             // A heeled sail presents less area to the wind.
             let (sail_surge, sail_sway) = sail_force(&params, &wind, sheet);
             let power = heel.cos().max(0.0);
             let (sail_surge, sail_sway) = (sail_surge * power, sail_sway * power);
             let (board_surge, board_sway) = board_force(&params, surge, sway);
+            let (rudder_surge, rudder_sway, rudder_yaw) =
+                rudder_force(&params, rudder, surge, sway, yaw_rate);
+            let yaw_moment = rudder_yaw + params.board_arm * board_sway
+                - params.sail_ce_aft * sail_sway
+                - params.yaw_damping_linear * yaw_rate
+                - params.yaw_damping_quadratic * yaw_rate.abs() * yaw_rate;
             [
                 surge * heading.sin() + sway * heading.cos(),
                 surge * heading.cos() - sway * heading.sin(),
-                0.0,
-                (sail_surge + board_surge + hull_resistance(&params, surge)) / params.surge_mass,
-                (sail_sway + board_sway) / params.sway_mass,
+                if fixed_heading { 0.0 } else { yaw_rate },
+                (sail_surge + board_surge + rudder_surge + hull_resistance(&params, surge)
+                    + params.sway_mass * sway * yaw_rate)
+                    / params.surge_mass,
+                (sail_sway + board_sway + rudder_sway - params.surge_mass * surge * yaw_rate)
+                    / params.sway_mass,
                 heel_rate,
                 (sail_sway * params.sail_heel_arm + righting_moment(&params, heel)
                     - params.heel_damping * heel_rate)
                     / params.heel_inertia,
+                if fixed_heading { 0.0 } else { yaw_moment / params.yaw_inertia },
             ]
         });
         self.state.x = y[0];
@@ -108,6 +121,7 @@ impl Sim {
         self.state.sway = y[4];
         self.state.heel = y[5];
         self.state.heel_rate = y[6];
+        self.state.yaw_rate = y[7];
         if self.config.capsize_enabled && self.state.heel.abs() >= self.params.capsize_heel {
             self.status = Status::Capsized;
         }

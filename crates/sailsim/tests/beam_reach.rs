@@ -23,7 +23,7 @@ fn surge_after(sim: &mut Sim, seconds: f64, controls: Controls) -> f64 {
 
 #[test]
 fn beam_reach_accelerates_to_a_plausible_steady_speed() {
-    let mut sim = Sim::new(SimConfig::default());
+    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
     sim.reset(beam_reach());
     let controls = Controls { rudder: 0.0, sheet: 0.5 };
 

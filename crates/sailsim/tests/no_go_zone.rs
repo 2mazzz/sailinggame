@@ -16,7 +16,7 @@ fn head_to_wind() -> Scenario {
 
 #[test]
 fn boat_head_to_wind_loses_way_and_stops() {
-    let mut sim = Sim::new(SimConfig::default());
+    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
     sim.reset(head_to_wind());
 
     let mut out = sim.step(Controls { rudder: 0.0, sheet: 0.3 });

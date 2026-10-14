@@ -25,6 +25,22 @@ pub struct BoatParams {
     pub boom_angle_eased: f64,
     pub boom_angle_in: f64,
     pub sail: FoilParams,
+    /// Sail centre of effort, aft of the centre of gravity (m).
+    pub sail_ce_aft: f64,
+    /// Centreboard (centre of lateral resistance), forward of the centre of gravity (m).
+    /// With the sail aft of the board the boat carries a little weather helm.
+    pub board_arm: f64,
+    /// Yaw inertia including added mass (kg m^2) and yaw damping
+    /// (N m s/rad, N m s^2/rad^2).
+    pub yaw_inertia: f64,
+    pub yaw_damping_linear: f64,
+    pub yaw_damping_quadratic: f64,
+    pub rudder: FoilParams,
+    pub rudder_area: f64,
+    /// Distance from the centre of gravity to the rudder (m), and the rudder
+    /// angle at full deflection (rad).
+    pub rudder_arm: f64,
+    pub rudder_max_angle: f64,
     /// Mass that the righting moment acts on: hull + crew (kg).
     pub displacement_mass: f64,
     /// Peak righting arm GZ (m), with the crew hiking.
@@ -72,6 +88,21 @@ impl BoatParams {
             sail_heel_arm: 2.0,
             heel_inertia: 250.0,
             heel_damping: 900.0,
+            sail_ce_aft: 0.25,
+            board_arm: 0.50,
+            yaw_inertia: 200.0,
+            yaw_damping_linear: 80.0,
+            yaw_damping_quadratic: 60.0,
+            rudder: FoilParams {
+                lift_slope: 3.5,
+                stall_angle: 0.30,
+                drag_zero_lift: 0.012,
+                aspect_ratio: 2.5,
+                plate_normal: 1.1,
+            },
+            rudder_area: 0.06,
+            rudder_arm: 1.7,
+            rudder_max_angle: 35.0_f64.to_radians(),
             sail: FoilParams {
                 lift_slope: 4.5,
                 stall_angle: 0.35,

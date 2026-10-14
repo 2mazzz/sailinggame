@@ -32,3 +32,30 @@ pub fn board_force(params: &BoatParams, surge: f64, sway: f64) -> (f64, f64) {
         q_s * (cl * lift_dir.1 + cd * drag_dir.1),
     )
 }
+
+/// Force and moment from the rudder: (forward N, starboard N, yaw N m).
+///
+/// `rudder` in [-1, 1]; positive turns the bow to starboard. The blade sees
+/// the water at the stern, which moves sideways when the boat sways or yaws.
+pub fn rudder_force(
+    params: &BoatParams,
+    rudder: f64,
+    surge: f64,
+    sway: f64,
+    yaw_rate: f64,
+) -> (f64, f64, f64) {
+    let stern_sway = sway - yaw_rate * params.rudder_arm;
+    let speed = surge.hypot(stern_sway);
+    if speed < 1e-6 {
+        return (0.0, 0.0, 0.0);
+    }
+    let blade_angle = rudder.clamp(-1.0, 1.0) * params.rudder_max_angle * surge.signum();
+    let alpha = blade_angle + stern_sway.atan2(surge.abs());
+    let (cl, cd) = foil::coefficients(&params.rudder, alpha.abs());
+    let q_s = 0.5 * WATER_DENSITY * speed * speed * params.rudder_area;
+
+    let lateral = -alpha.signum() * cl * q_s;
+    let drag = -surge.signum() * cd * q_s;
+    // The rudder sits aft of the centre of gravity: moment = x * F_starboard.
+    (drag, lateral, -params.rudder_arm * lateral)
+}

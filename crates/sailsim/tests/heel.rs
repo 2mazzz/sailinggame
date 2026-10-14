@@ -15,7 +15,7 @@ fn sim_with(wind_speed: f64, wind_dir_deg: f64, start_heel_deg: f64, config: Sim
 }
 
 fn no_capsize() -> SimConfig {
-    SimConfig { capsize_enabled: false, ..SimConfig::default() }
+    SimConfig { capsize_enabled: false, fixed_heading: true, ..SimConfig::default() }
 }
 
 /// Heel in degrees after `seconds` close-hauled with wind from starboard.

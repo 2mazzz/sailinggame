@@ -12,7 +12,7 @@ struct Run {
 /// starboard side), sheet fixed, 90 s from rest.
 fn sail(twa_deg: f64, sheet: f64) -> Run {
     let wind_dir = twa_deg.to_radians();
-    let mut sim = Sim::new(SimConfig::default());
+    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
     sim.reset(Scenario {
         true_wind_speed: WIND,
         true_wind_dir: wind_dir,

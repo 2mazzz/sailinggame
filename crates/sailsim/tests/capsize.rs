@@ -26,14 +26,14 @@ fn run(sim: &mut Sim, seconds: f64, controls: impl Fn(&BoatState) -> Controls) -
 
 #[test]
 fn sheeted_in_close_hauled_in_a_gale_capsizes() {
-    let mut sim = gale_close_hauled(SimConfig::default(), 0.0);
+    let mut sim = gale_close_hauled(SimConfig { fixed_heading: true, ..SimConfig::default() }, 0.0);
     let (_, status) = run(&mut sim, 60.0, |_| SHEETED_IN);
     assert_eq!(status, Status::Capsized);
 }
 
 #[test]
 fn the_same_gale_does_not_capsize_when_capsize_is_disabled() {
-    let mut sim = gale_close_hauled(SimConfig { capsize_enabled: false, ..SimConfig::default() }, 0.0);
+    let mut sim = gale_close_hauled(SimConfig { capsize_enabled: false, fixed_heading: true, ..SimConfig::default() }, 0.0);
     for _ in 0..3000 {
         assert_eq!(sim.step(SHEETED_IN).status, Status::Sailing);
     }
@@ -41,7 +41,7 @@ fn the_same_gale_does_not_capsize_when_capsize_is_disabled() {
 
 #[test]
 fn easing_the_sheet_when_heeled_over_avoids_the_capsize() {
-    let mut sim = gale_close_hauled(SimConfig::default(), 0.0);
+    let mut sim = gale_close_hauled(SimConfig { fixed_heading: true, ..SimConfig::default() }, 0.0);
     let (state, status) = run(&mut sim, 60.0, |s| {
         let sheet = if s.heel.abs() > 30.0_f64.to_radians() { 0.1 } else { 0.85 };
         Controls { rudder: 0.0, sheet }
@@ -51,7 +51,7 @@ fn easing_the_sheet_when_heeled_over_avoids_the_capsize() {
 
 #[test]
 fn capsize_is_terminal_and_freezes_the_boat() {
-    let mut sim = gale_close_hauled(SimConfig::default(), 0.0);
+    let mut sim = gale_close_hauled(SimConfig { fixed_heading: true, ..SimConfig::default() }, 0.0);
     let (frozen, status) = run(&mut sim, 60.0, |_| SHEETED_IN);
     assert_eq!(status, Status::Capsized);
 
@@ -62,7 +62,7 @@ fn capsize_is_terminal_and_freezes_the_boat() {
 
 #[test]
 fn a_boat_flat_on_the_water_does_not_sail() {
-    let mut sim = gale_close_hauled(SimConfig { capsize_enabled: false, ..SimConfig::default() }, 120.0);
+    let mut sim = gale_close_hauled(SimConfig { capsize_enabled: false, fixed_heading: true, ..SimConfig::default() }, 120.0);
     let (state, _) = run(&mut sim, 30.0, |_| SHEETED_IN);
     assert!(state.surge.abs() < 1.0, "surge {} m/s", state.surge);
 }
