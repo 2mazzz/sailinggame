@@ -45,6 +45,16 @@ async function main() {
   const windArrow = new Graphics().poly([0, -26, 9, 4, 0, -2, -9, 4]).fill(0xffffff);
     app.stage.addChild(windArrow);
 
+  // Course marks (world frame, drawn on the water); the next one is highlighted.
+  const markGfx = new Graphics();
+  world.addChildAt(markGfx, 1);
+  const marks = Array.from(game.course_marks());
+  const markRadius = game.mark_radius();
+  const finishBanner = new Text({ text: "", style: { fill: 0x7dffb0, fontFamily: "monospace", fontSize: 36, align: "center" } });
+  finishBanner.anchor.set(0.5);
+  finishBanner.visible = false;
+  app.stage.addChild(finishBanner);
+
   // Apparent wind: a line from the boat toward where the wind comes from.
   const apparent = new Graphics();
   world.addChild(apparent);
@@ -150,13 +160,33 @@ async function main() {
     rudderGfx.clear().moveTo(0, 0).lineTo(Math.sin(rudder * 0.6) * 0.5, Math.cos(rudder * 0.6) * 0.5)
       .stroke({ width: 0.1, color: 0x333333 });
 
+    const [nextMark, markDist, markBearing] = game.course_progress();
+    markGfx.clear();
+    for (let i = 0; i < marks.length / 2; i++) {
+      const next = i === nextMark;
+      const done = nextMark < 0 || i < nextMark;
+      const mx = marks[2 * i] * PX_PER_M, my = -marks[2 * i + 1] * PX_PER_M;
+      markGfx.circle(mx, my, markRadius * PX_PER_M)
+        .fill({ color: next ? 0xffd23f : 0xffffff, alpha: next ? 0.3 : 0.1 })
+        .stroke({ width: next ? 3 : 1.5, color: next ? 0xffd23f : 0xffffff, alpha: done ? 0.3 : 0.9 });
+      markGfx.circle(mx, my, 5).fill({ color: next ? 0xffd23f : 0xffffff, alpha: done ? 0.3 : 1 });
+    }
+    const finished = game.course_status() === 1;
+    finishBanner.visible = finished;
+    finishBanner.text = `FINISHED  ${game.finish_time().toFixed(1)} s\nR to restart`;
+    finishBanner.position.set(width / 2, height / 2 - 80);
+    const courseLine = nextMark < 0
+      ? `course   finished in ${game.finish_time().toFixed(1)} s`
+      : `mark ${nextMark + 1}/${marks.length / 2}  bearing ${(((deg(markBearing) % 360) + 360) % 360).toFixed(0)} deg  dist ${markDist.toFixed(0)} m`;
+
     banner.visible = s[CAPSIZED] === 1;
     banner.position.set(width / 2, height / 2 - 80);
     windArrow.position.set(width - 50, 50);
     windArrow.rotation = (windFromDeg * Math.PI) / 180 + Math.PI; // points where the wind blows to
     const twa = Math.abs(((deg(s[HEADING]) - windFromDeg + 540) % 360) - 180);
     hud.text = [
-      `time     ${s[TIME].toFixed(1)} s`,
+      `time     ${(finished ? game.finish_time() : s[TIME]).toFixed(1)} s`,
+      courseLine,
       `speed    ${(s[SURGE] * KN).toFixed(1)} kn`,
       `heel     ${deg(s[HEEL]).toFixed(0)} deg`,
       `heading  ${((deg(s[HEADING]) % 360) + 360) % 360 | 0} deg`,

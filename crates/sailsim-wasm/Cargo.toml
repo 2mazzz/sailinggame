@@ -8,4 +8,5 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 sailsim = { path = "../sailsim" }
+sailcourse = { path = "../sailcourse" }
 wasm-bindgen = "=0.2.129"

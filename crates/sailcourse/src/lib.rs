@@ -67,6 +67,18 @@ impl CourseRun {
         self.outcome = Outcome::InProgress;
     }
 
+    pub fn sim(&self) -> &Sim {
+        &self.sim
+    }
+
+    pub fn sim_mut(&mut self) -> &mut Sim {
+        &mut self.sim
+    }
+
+    pub fn course(&self) -> &Course {
+        &self.course
+    }
+
     pub fn outcome(&self) -> Outcome {
         self.outcome
     }

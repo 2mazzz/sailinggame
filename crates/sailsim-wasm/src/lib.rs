@@ -1,3 +1,4 @@
+use sailcourse::{Course, CourseRun, Mark, Outcome};
 use sailsim::{Controls, Scenario, Sim, SimConfig, Status};
 use wasm_bindgen::prelude::*;
 
@@ -10,11 +11,25 @@ const SNAPSHOT_LEN: usize = 12;
 /// Gust strength (fraction of the mean wind) the viewer starts with.
 const DEFAULT_GUST_INTENSITY: f64 = 0.3;
 
+/// A mark is reached within this many metres.
+const MARK_RADIUS: f64 = 10.0;
+
+/// Default course (x, y pairs, metres; x east, y north): upwind first for the
+/// default northerly wind, then a reach and a run back past the start.
+const DEFAULT_MARKS: [(f64, f64); 4] = [(0.0, 120.0), (90.0, 70.0), (90.0, -40.0), (0.0, -40.0)];
+
+fn default_course() -> Course {
+    Course {
+        marks: DEFAULT_MARKS.iter().map(|&(x, y)| Mark { x, y }).collect(),
+        mark_radius: MARK_RADIUS,
+    }
+}
+
 /// The browser's handle on the simulation: owns a `Sim` and runs it at its
 /// fixed step, however long the frame was.
 #[wasm_bindgen]
 pub struct Game {
-    sim: Sim,
+    run: CourseRun,
     scenario: Scenario,
     dt: f64,
     time: f64,
@@ -25,14 +40,23 @@ pub struct Game {
 
 impl Game {
     fn rebuild(&mut self) {
-        self.sim = Sim::new(SimConfig {
-            capsize_enabled: self.capsize_enabled,
-            gust_intensity: self.gust_intensity,
-            seed: 1,
-            ..SimConfig::default()
-        });
-        self.sim.reset(self.scenario);
-        self.sim
+        let course = self.run.course().clone();
+        self.rebuild_with(course);
+    }
+
+    fn rebuild_with(&mut self, course: Course) {
+        self.run = CourseRun::new(
+            Sim::new(SimConfig {
+                capsize_enabled: self.capsize_enabled,
+                gust_intensity: self.gust_intensity,
+                seed: 1,
+                ..SimConfig::default()
+            }),
+            course,
+        );
+        self.run.reset(self.scenario);
+        self.run
+            .sim_mut()
             .set_wind(self.scenario.true_wind_speed, self.scenario.true_wind_dir);
         self.time = 0.0;
         self.pending = 0.0;
@@ -60,10 +84,10 @@ impl Game {
             start_speed: 0.0,
             start_heel: 0.0,
         };
-        let mut sim = Sim::new(config);
-        sim.reset(scenario);
+        let mut run = CourseRun::new(Sim::new(config), default_course());
+        run.reset(scenario);
         Game {
-            sim,
+            run,
             scenario,
             dt: config.dt,
             time: 0.0,
@@ -74,7 +98,7 @@ impl Game {
     }
 
     pub fn reset(&mut self) {
-        self.sim.reset(self.scenario);
+        self.run.reset(self.scenario);
         self.time = 0.0;
         self.pending = 0.0;
     }
@@ -109,12 +133,16 @@ impl Game {
         };
         while self.pending >= self.dt {
             self.pending -= self.dt;
-            let out = self.sim.step(controls);
-            if out.status == Status::Capsized {
+            let outcome = self.run.step(controls);
+            if matches!(outcome, Outcome::Capsized { .. }) {
                 self.pending = 0.0;
                 break;
             }
             self.time += self.dt;
+            if matches!(outcome, Outcome::Finished { .. }) {
+                self.pending = 0.0;
+                break;
+            }
         }
     }
 
@@ -123,8 +151,9 @@ impl Game {
     }
 
     pub fn snapshot(&self) -> Vec<f64> {
-        let (state, status) = (self.sim.state(), self.sim.status());
-        let obs = self.sim.observation();
+        let sim = self.run.sim();
+        let (state, status) = (sim.state(), sim.status());
+        let obs = sim.observation();
         vec![
             state.x,
             state.y,
@@ -137,7 +166,7 @@ impl Game {
             obs.apparent_wind_speed,
             if status == Status::Capsized { 1.0 } else { 0.0 },
             self.time,
-            self.sim.wind_speed(),
+            sim.wind_speed(),
         ]
     }
 
@@ -146,7 +175,8 @@ impl Game {
     pub fn set_wind(&mut self, speed: f64, dir_deg: f64) {
         self.scenario.true_wind_speed = speed.max(0.0);
         self.scenario.true_wind_dir = dir_deg.to_radians();
-        self.sim
+        self.run
+            .sim_mut()
             .set_wind(self.scenario.true_wind_speed, self.scenario.true_wind_dir);
     }
 
@@ -157,5 +187,58 @@ impl Game {
     /// Degrees clockwise from north, where the wind blows from.
     pub fn wind_dir_deg(&self) -> f64 {
         self.scenario.true_wind_dir.to_degrees()
+    }
+
+    /// Replace the course with marks given as flat x, y pairs (metres) and
+    /// restart the run.
+    pub fn set_course(&mut self, marks: Vec<f64>) {
+        let course = Course {
+            marks: marks
+                .iter()
+                .step_by(2)
+                .zip(marks.iter().skip(1).step_by(2))
+                .map(|(&x, &y)| Mark { x, y })
+                .collect(),
+            mark_radius: MARK_RADIUS,
+        };
+        self.rebuild_with(course);
+    }
+
+    /// Marks as flat x, y pairs (metres).
+    pub fn course_marks(&self) -> Vec<f64> {
+        let marks = &self.run.course().marks;
+        marks.iter().flat_map(|m| [m.x, m.y]).collect()
+    }
+
+    pub fn mark_radius(&self) -> f64 {
+        self.run.course().mark_radius
+    }
+
+    /// `[next mark index (-1 when finished), distance (m), bearing (rad
+    /// clockwise from north)]` to the next mark.
+    pub fn course_progress(&self) -> Vec<f64> {
+        let p = self.run.progress();
+        vec![
+            p.next_mark.map_or(-1.0, |i| i as f64),
+            p.distance,
+            p.bearing,
+        ]
+    }
+
+    /// 0 = in progress, 1 = finished, 2 = capsized.
+    pub fn course_status(&self) -> u8 {
+        match self.run.outcome() {
+            Outcome::InProgress => 0,
+            Outcome::Finished { .. } => 1,
+            Outcome::Capsized { .. } => 2,
+        }
+    }
+
+    /// Final time (s) once finished, otherwise 0.
+    pub fn finish_time(&self) -> f64 {
+        match self.run.outcome() {
+            Outcome::Finished { time } => time,
+            _ => 0.0,
+        }
     }
 }
