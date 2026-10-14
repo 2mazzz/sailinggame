@@ -4,6 +4,7 @@ mod hydro;
 mod integrator;
 mod params;
 mod sim;
+mod stability;
 mod state;
 
 pub use sim::{Scenario, Sim, SimConfig, StepOutput};

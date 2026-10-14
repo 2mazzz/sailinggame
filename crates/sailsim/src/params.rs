@@ -25,6 +25,19 @@ pub struct BoatParams {
     pub boom_angle_eased: f64,
     pub boom_angle_in: f64,
     pub sail: FoilParams,
+    /// Mass that the righting moment acts on: hull + crew (kg).
+    pub displacement_mass: f64,
+    /// Peak righting arm GZ (m), with the crew hiking.
+    pub righting_arm_max: f64,
+    /// Heel at which the righting moment vanishes (rad).
+    pub vanishing_heel: f64,
+    /// Heel at which the boat capsizes (mast in the water) (rad).
+    pub capsize_heel: f64,
+    /// Height of the sail's centre of effort above the board's centre of lateral resistance (m).
+    pub sail_heel_arm: f64,
+    /// Roll inertia (kg m^2) and roll damping (N m s/rad).
+    pub heel_inertia: f64,
+    pub heel_damping: f64,
     /// Hull + crew + added mass in sway (kg).
     pub sway_mass: f64,
     /// Centreboard (plus hull and rudder lateral area), area in m^2.
@@ -52,6 +65,13 @@ impl BoatParams {
                 plate_normal: 1.1,
             },
             board_area: 0.15,
+            displacement_mass: 140.0,
+            righting_arm_max: 0.45,
+            vanishing_heel: 85.0_f64.to_radians(),
+            capsize_heel: 70.0_f64.to_radians(),
+            sail_heel_arm: 2.0,
+            heel_inertia: 250.0,
+            heel_damping: 900.0,
             sail: FoilParams {
                 lift_slope: 4.5,
                 stall_angle: 0.35,

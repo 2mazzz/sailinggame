@@ -20,6 +20,7 @@ fn sail(twa_deg: f64, sheet: f64) -> Run {
         start_y: 0.0,
         start_heading: 0.0,
         start_speed: 0.0,
+        start_heel: 0.0,
     });
     let toward_wind = (wind_dir.sin(), wind_dir.cos());
     let progress = |s: &BoatState| s.x * toward_wind.0 + s.y * toward_wind.1;

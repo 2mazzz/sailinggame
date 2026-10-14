@@ -10,6 +10,7 @@ fn head_to_wind() -> Scenario {
         start_y: 0.0,
         start_heading: 0.0,
         start_speed: 2.0,
+        start_heel: 0.0,
     }
 }
 

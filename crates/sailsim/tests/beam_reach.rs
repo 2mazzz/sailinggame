@@ -9,6 +9,7 @@ fn beam_reach() -> Scenario {
         start_y: 0.0,
         start_heading: 0.0,
         start_speed: 0.0,
+        start_heel: 0.0,
     }
 }
 

@@ -11,6 +11,7 @@ fn steady_speed(twa_deg: f64, sheet: f64) -> f64 {
         start_y: 0.0,
         start_heading: 0.0,
         start_speed: 0.0,
+        start_heel: 0.0,
     });
     let mut surge = 0.0;
     for _ in 0..(90.0 / 0.02) as usize {
