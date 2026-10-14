@@ -89,7 +89,7 @@ impl BoatParams {
             heel_inertia: 250.0,
             heel_damping: 900.0,
             sail_ce_aft: 0.25,
-            board_arm: 0.50,
+            board_arm: 0.42,
             yaw_inertia: 200.0,
             yaw_damping_linear: 80.0,
             yaw_damping_quadratic: 60.0,

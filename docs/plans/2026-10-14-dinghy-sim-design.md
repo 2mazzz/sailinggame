@@ -105,6 +105,7 @@ Built test-first at these seams, all in `crates/sailsim/tests/`: rest and determ
 Deviations from the design above:
 - Steering/yaw and `fixed_heading` were added (see Steering). Mirror symmetry runs with free yaw.
 - `Observation` is a plain struct: apparent wind angle and speed, surge, sway, heel, heel rate, yaw rate, capsize margin.
+- Weather helm is mild (`board_arm` 0.42 m): on a beam reach a released rudder drifts about 2 deg in 30 s (test `helm`). Source validation of this value is pending (see `docs/research/`).
 - Capsize threshold is 70 deg of heel; the stability curve vanishes at 85 deg. Past 90 deg a flat sail makes no force.
 - `SimConfig::seed` is reserved: with constant wind there is nothing random yet.
 
