@@ -1,4 +1,5 @@
 use crate::aero::{apparent_wind, sail_force};
+use crate::gust::Gusts;
 use crate::hydro::{board_force, hull_resistance, rudder_force};
 use crate::integrator::rk4;
 use crate::observation::Observation;
@@ -13,6 +14,10 @@ pub struct SimConfig {
     pub capsize_enabled: bool,
     /// Lock the heading (no yaw): for tests and for curricula that learn sail trim first.
     pub fixed_heading: bool,
+    /// Gust strength as a fraction of the mean wind: the wind stays within
+    /// `mean * (1 +/- gust_intensity)`. Zero (the default) gives steady wind.
+    /// Gusts are deterministic given `seed`.
+    pub gust_intensity: f64,
 }
 
 impl Default for SimConfig {
@@ -22,6 +27,7 @@ impl Default for SimConfig {
             seed: 0,
             capsize_enabled: true,
             fixed_heading: false,
+            gust_intensity: 0.0,
         }
     }
 }
@@ -49,8 +55,10 @@ pub struct StepOutput {
 pub struct Sim {
     config: SimConfig,
     params: BoatParams,
+    /// Mean true wind speed; gusts vary around it.
     wind_speed: f64,
     wind_dir: f64,
+    gusts: Gusts,
     state: BoatState,
     status: Status,
 }
@@ -62,6 +70,7 @@ impl Sim {
             params: BoatParams::ilca_like(),
             wind_speed: 0.0,
             wind_dir: 0.0,
+            gusts: Gusts::new(config.seed),
             state: BoatState::default(),
             status: Status::Sailing,
         }
@@ -70,6 +79,7 @@ impl Sim {
     pub fn reset(&mut self, scenario: Scenario) {
         self.wind_speed = scenario.true_wind_speed;
         self.wind_dir = scenario.true_wind_dir;
+        self.gusts = Gusts::new(self.config.seed);
         self.state = BoatState {
             x: scenario.start_x,
             y: scenario.start_y,
@@ -88,6 +98,11 @@ impl Sim {
         self.wind_dir = dir;
     }
 
+    /// Live true wind speed (m/s), including the current gust.
+    pub fn wind_speed(&self) -> f64 {
+        self.wind_speed * (1.0 + self.config.gust_intensity * self.gusts.value())
+    }
+
     pub fn state(&self) -> BoatState {
         self.state
     }
@@ -98,7 +113,7 @@ impl Sim {
 
     pub fn observation(&self) -> Observation {
         let s = &self.state;
-        let wind = apparent_wind(self.wind_speed, self.wind_dir, s.heading, s.surge, s.sway);
+        let wind = apparent_wind(self.wind_speed(), self.wind_dir, s.heading, s.surge, s.sway);
         Observation {
             apparent_wind_angle: wind.angle,
             apparent_wind_speed: wind.speed,
@@ -118,6 +133,8 @@ impl Sim {
                 status: self.status,
             };
         }
+        self.gusts.advance(self.config.dt);
+        let wind_speed = self.wind_speed();
         let s = &self.state;
         let y = [
             s.x,
@@ -130,7 +147,7 @@ impl Sim {
             s.yaw_rate,
         ];
         let params = self.params;
-        let (wind_speed, wind_dir, sheet) = (self.wind_speed, self.wind_dir, controls.sheet);
+        let (wind_dir, sheet) = (self.wind_dir, controls.sheet);
         let (rudder, fixed_heading) = (controls.rudder, self.config.fixed_heading);
         let y = rk4(y, self.config.dt, |y| {
             let [_, _, heading, surge, sway, heel, heel_rate, yaw_rate] = *y;

@@ -1,5 +1,6 @@
 mod aero;
 mod foil;
+mod gust;
 mod hydro;
 mod integrator;
 mod observation;
