@@ -117,4 +117,4 @@ Known model limits, to revisit:
 ## Out of scope
 
 - Waves, gusts, wind shifts, planing, hiking dynamics, capsize recovery.
-- **Course layer** (own design doc): a map with goals the boat must reach in a specific order. Marks, order, rounding detection, progress and reward, episode termination, and its use from both the Gymnasium env and the game. It sits on top of `sailsim` as a separate crate, because it is game/RL logic, not physics.
+- **Course layer** (own design doc: [course layer design](2026-10-14-course-layer-design.md)): a map with goals the boat must reach in a specific order. Marks, order, rounding detection, progress and reward, episode termination, and its use from both the Gymnasium env and the game. It sits on top of `sailsim` as a separate crate, because it is game/RL logic, not physics.

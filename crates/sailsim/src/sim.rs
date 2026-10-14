@@ -88,6 +88,11 @@ impl Sim {
         self.wind_dir = dir;
     }
 
+    /// Fixed timestep (s) per `step`.
+    pub fn dt(&self) -> f64 {
+        self.config.dt
+    }
+
     pub fn state(&self) -> BoatState {
         self.state
     }
