@@ -27,7 +27,7 @@ impl BoatParams {
         Self {
             surge_mass: 150.0,
             resistance_linear: 3.0,
-            resistance_quadratic: 5.0,
+            resistance_quadratic: 6.5,
             sail_area: 7.0,
             boom_angle_eased: 90.0_f64.to_radians(),
             boom_angle_in: 5.0_f64.to_radians(),
