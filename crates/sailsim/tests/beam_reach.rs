@@ -50,3 +50,21 @@ fn beam_reach_accelerates_to_a_plausible_steady_speed() {
         "speed should have levelled off: {at_50s} -> {at_60s}"
     );
 }
+
+#[test]
+fn heavier_sourced_boat_still_accelerates_from_rest_on_a_beam_reach() {
+    // With the sourced 160 kg all-up mass (170 kg in surge) the boat is
+    // slower to get going than the old 140/150 kg one, but should still reach
+    // walking pace (1 m/s) within 5 s of a standing start (about 1 s measured).
+    let mut sim = Sim::new(SimConfig {
+        fixed_heading: true,
+        ..SimConfig::default()
+    });
+    sim.reset(beam_reach());
+    let controls = Controls {
+        rudder: 0.0,
+        sheet: 0.5,
+    };
+    let at_5s = surge_after(&mut sim, 5.0, controls);
+    assert!(at_5s > 1.0, "surge after 5 s from rest: {at_5s}");
+}

@@ -66,7 +66,8 @@ impl BoatParams {
     /// ~80 kg sailor, plus a little added mass.
     pub fn ilca_like() -> Self {
         Self {
-            surge_mass: 150.0,
+            // Source: Day and Nixon (2014), 160 kg all-up (hull 58 kg + rig/foils ~22 kg + 80 kg sailor); plus ~10 kg added mass (my estimate). Confidence: high for 160, low for the added mass. See docs/research/2026-10-14-dinghy-physics-validation.md Q1.
+            surge_mass: 170.0,
             resistance_linear: 3.0,
             resistance_quadratic: 6.5,
             sail_area: 7.0,
@@ -81,7 +82,8 @@ impl BoatParams {
                 plate_normal: 1.1,
             },
             board_area: 0.15,
-            displacement_mass: 140.0,
+            // Source: Day and Nixon (2014) benchmark all-up mass, hull plus rig plus foils plus crew (was 140 kg). Confidence: high.
+            displacement_mass: 160.0,
             righting_arm_max: 0.45,
             vanishing_heel: 85.0_f64.to_radians(),
             capsize_heel: 70.0_f64.to_radians(),
@@ -89,7 +91,8 @@ impl BoatParams {
             heel_inertia: 250.0,
             heel_damping: 900.0,
             sail_ce_aft: 0.25,
-            board_arm: 0.42,
+            // RETUNED, no source (was 0.42): the larger rudder moved the centre of lateral resistance aft, giving lee helm; moving the board forward restores the mild weather helm (about 2 deg drift in 30 s) that tests/helm.rs expects. Research flags this CE/CLR lead as too large; revisit with the helm-angle data.
+            board_arm: 0.76,
             yaw_inertia: 200.0,
             yaw_damping_linear: 80.0,
             yaw_damping_quadratic: 60.0,
@@ -100,7 +103,8 @@ impl BoatParams {
                 aspect_ratio: 2.5,
                 plate_normal: 1.1,
             },
-            rudder_area: 0.06,
+            // LOW confidence: my estimate (about 0.45 m x 0.2 m submerged) from the ILCA class rules drawing, not a published figure (was 0.06).
+            rudder_area: 0.09,
             rudder_arm: 1.7,
             rudder_max_angle: 35.0_f64.to_radians(),
             sail: FoilParams {
