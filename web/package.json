@@ -1,0 +1,12 @@
+{
+  "name": "sailinggame-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "wasm": "cd .. && cargo build -p sailsim-wasm --target wasm32-unknown-unknown --release && wasm-bindgen --target web --out-dir web/src/wasm target/wasm32-unknown-unknown/release/sailsim_wasm.wasm",
+    "dev": "npm run wasm && vite",
+    "build": "npm run wasm && tsc --noEmit && vite build"
+  },
+  "dependencies": { "pixi.js": "^8.0.0" },
+  "devDependencies": { "typescript": "^5.4.0", "vite": "^5.4.0" }
+}
