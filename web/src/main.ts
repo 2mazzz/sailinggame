@@ -12,7 +12,7 @@ const SHEET_RATE = 0.5;
 const KN = 1.943844;
 
 // Snapshot field indices (see sailsim-wasm).
-const X = 0, Y = 1, HEADING = 2, HEEL = 3, SURGE = 4, SWAY = 5, AWA = 7, AWS = 8, CAPSIZED = 9, TIME = 10, TWS = 11;
+const X = 0, Y = 1, HEADING = 2, HEEL = 3, SURGE = 4, SWAY = 5, AWA = 7, AWS = 8, CAPSIZED = 9, TIME = 10, TWS = 11, TWD = 12;
 
 const deg = (r: number) => (r * 180) / Math.PI;
 
@@ -78,6 +78,7 @@ async function main() {
   mkSlider("wind kn", 0, 35, Math.round(windKn), (v) => { windKn = v; applyWind(); });
   mkSlider("wind from deg", 0, 359, Math.round(windFromDeg), (v) => { windFromDeg = v; applyWind(); });
   mkSlider("gust %", 0, 60, Math.round(game.gust_intensity() * 100), (v) => game.set_gust_intensity(v / 100));
+  mkSlider("shift deg", 0, 30, Math.round(game.shift_deg()), (v) => game.set_shift_deg(v));
   document.body.appendChild(panel);
 
   const keys = new Set<string>();
@@ -153,14 +154,14 @@ async function main() {
     banner.visible = s[CAPSIZED] === 1;
     banner.position.set(width / 2, height / 2 - 80);
     windArrow.position.set(width - 50, 50);
-    windArrow.rotation = (windFromDeg * Math.PI) / 180 + Math.PI; // points where the wind blows to
-    const twa = Math.abs(((deg(s[HEADING]) - windFromDeg + 540) % 360) - 180);
+    windArrow.rotation = (s[TWD] * Math.PI) / 180 + Math.PI; // points where the wind blows to
+    const twa = Math.abs(((deg(s[HEADING]) - s[TWD] + 540) % 360) - 180);
     hud.text = [
       `time     ${s[TIME].toFixed(1)} s`,
       `speed    ${(s[SURGE] * KN).toFixed(1)} kn`,
       `heel     ${deg(s[HEEL]).toFixed(0)} deg`,
       `heading  ${((deg(s[HEADING]) % 360) + 360) % 360 | 0} deg`,
-      `TWA      ${twa.toFixed(0)} deg   wind ${(s[TWS] * KN).toFixed(1)} kn (mean ${windKn.toFixed(0)}) from ${windFromDeg.toFixed(0)}`,
+      `TWA      ${twa.toFixed(0)} deg   wind ${(s[TWS] * KN).toFixed(1)} kn (mean ${windKn.toFixed(0)}) from ${(((s[TWD] % 360) + 360) % 360).toFixed(0)} (mean ${windFromDeg.toFixed(0)})`,
       `AWA/AWS  ${deg(awa).toFixed(0)} deg / ${(s[AWS] * KN).toFixed(1)} kn`,
       `rudder   ${rudder.toFixed(2)}   sheet ${sheet.toFixed(2)} (1 = hard in)`,
       `capsize  ${game.capsize_enabled() ? "on" : "off"}`,

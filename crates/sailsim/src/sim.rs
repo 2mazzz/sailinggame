@@ -18,6 +18,9 @@ pub struct SimConfig {
     /// `mean * (1 +/- gust_intensity)`. Zero (the default) gives steady wind.
     /// Gusts are deterministic given `seed`.
     pub gust_intensity: f64,
+    /// Largest wind direction shift (rad) either side of the mean direction.
+    /// Zero (the default) gives a steady direction. Deterministic given `seed`.
+    pub shift_intensity: f64,
 }
 
 impl Default for SimConfig {
@@ -28,6 +31,7 @@ impl Default for SimConfig {
             capsize_enabled: true,
             fixed_heading: false,
             gust_intensity: 0.0,
+            shift_intensity: 0.0,
         }
     }
 }
@@ -52,13 +56,20 @@ pub struct StepOutput {
     pub status: Status,
 }
 
+/// Seconds a typical gust lasts, and a typical wind shift.
+const GUST_TIME_CONSTANT: f64 = 5.0;
+const SHIFT_TIME_CONSTANT: f64 = 30.0;
+const SHIFT_SEED_SALT: u64 = 0xA5A5_5A5A_1234_8765;
+
 pub struct Sim {
     config: SimConfig,
     params: BoatParams,
     /// Mean true wind speed; gusts vary around it.
     wind_speed: f64,
+    /// Mean true wind direction; shifts swing around it.
     wind_dir: f64,
     gusts: Gusts,
+    shifts: Gusts,
     state: BoatState,
     status: Status,
 }
@@ -70,7 +81,8 @@ impl Sim {
             params: BoatParams::ilca_like(),
             wind_speed: 0.0,
             wind_dir: 0.0,
-            gusts: Gusts::new(config.seed),
+            gusts: Gusts::new(config.seed, GUST_TIME_CONSTANT),
+            shifts: Gusts::new(config.seed ^ SHIFT_SEED_SALT, SHIFT_TIME_CONSTANT),
             state: BoatState::default(),
             status: Status::Sailing,
         }
@@ -79,7 +91,8 @@ impl Sim {
     pub fn reset(&mut self, scenario: Scenario) {
         self.wind_speed = scenario.true_wind_speed;
         self.wind_dir = scenario.true_wind_dir;
-        self.gusts = Gusts::new(self.config.seed);
+        self.gusts = Gusts::new(self.config.seed, GUST_TIME_CONSTANT);
+        self.shifts = Gusts::new(self.config.seed ^ SHIFT_SEED_SALT, SHIFT_TIME_CONSTANT);
         self.state = BoatState {
             x: scenario.start_x,
             y: scenario.start_y,
@@ -98,6 +111,11 @@ impl Sim {
         self.wind_dir = dir;
     }
 
+    /// Live true wind direction (rad, where it blows from), including the current shift.
+    pub fn wind_dir(&self) -> f64 {
+        self.wind_dir + self.config.shift_intensity * self.shifts.value()
+    }
+
     /// Live true wind speed (m/s), including the current gust.
     pub fn wind_speed(&self) -> f64 {
         self.wind_speed * (1.0 + self.config.gust_intensity * self.gusts.value())
@@ -113,7 +131,13 @@ impl Sim {
 
     pub fn observation(&self) -> Observation {
         let s = &self.state;
-        let wind = apparent_wind(self.wind_speed(), self.wind_dir, s.heading, s.surge, s.sway);
+        let wind = apparent_wind(
+            self.wind_speed(),
+            self.wind_dir(),
+            s.heading,
+            s.surge,
+            s.sway,
+        );
         Observation {
             apparent_wind_angle: wind.angle,
             apparent_wind_speed: wind.speed,
@@ -134,6 +158,7 @@ impl Sim {
             };
         }
         self.gusts.advance(self.config.dt);
+        self.shifts.advance(self.config.dt);
         let wind_speed = self.wind_speed();
         let s = &self.state;
         let y = [
@@ -147,7 +172,7 @@ impl Sim {
             s.yaw_rate,
         ];
         let params = self.params;
-        let (wind_dir, sheet) = (self.wind_dir, controls.sheet);
+        let (wind_dir, sheet) = (self.wind_dir(), controls.sheet);
         let (rudder, fixed_heading) = (controls.rudder, self.config.fixed_heading);
         let y = rk4(y, self.config.dt, |y| {
             let [_, _, heading, surge, sway, heel, heel_rate, yaw_rate] = *y;

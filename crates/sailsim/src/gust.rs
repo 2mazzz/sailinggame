@@ -1,21 +1,22 @@
-/// Seeded gust process: a low-pass-filtered (Ornstein-Uhlenbeck) noise `g`,
+/// Seeded gust process (also used, slower, for wind shifts): a low-pass-filtered (Ornstein-Uhlenbeck) noise `g`,
 /// kept within [-1, 1]. The wind is `mean * (1 + intensity * g)`.
 #[derive(Debug, Clone, Copy)]
 pub struct Gusts {
     rng: u64,
     value: f64,
+    time_constant: f64,
 }
 
-/// Time constant of the filter (s): how long a typical gust lasts.
-const TIME_CONSTANT: f64 = 5.0;
 /// Standard deviation of `g` before clamping.
 const SIGMA: f64 = 0.5;
 
 impl Gusts {
-    pub fn new(seed: u64) -> Self {
+    /// `time_constant` (s): how long a typical excursion lasts.
+    pub fn new(seed: u64, time_constant: f64) -> Self {
         Self {
             rng: seed,
             value: 0.0,
+            time_constant,
         }
     }
 
@@ -25,7 +26,7 @@ impl Gusts {
     }
 
     pub fn advance(&mut self, dt: f64) {
-        let decay = (-dt / TIME_CONSTANT).exp();
+        let decay = (-dt / self.time_constant).exp();
         let noise = self.gaussian();
         self.value =
             (self.value * decay + SIGMA * (1.0 - decay * decay).sqrt() * noise).clamp(-1.0, 1.0);

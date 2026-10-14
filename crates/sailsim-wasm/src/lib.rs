@@ -4,11 +4,13 @@ use wasm_bindgen::prelude::*;
 /// Fields of the snapshot returned by `Game::snapshot`, in order.
 /// x, y (m), heading, heel (rad), surge, sway (m/s), yaw_rate (rad/s),
 /// apparent wind angle (rad), apparent wind speed (m/s), capsized (0/1), time (s),
-/// live true wind speed incl. gusts (m/s).
-const SNAPSHOT_LEN: usize = 12;
+/// live true wind speed incl. gusts (m/s), live true wind direction incl. shifts (deg).
+const SNAPSHOT_LEN: usize = 13;
 
 /// Gust strength (fraction of the mean wind) the viewer starts with.
 const DEFAULT_GUST_INTENSITY: f64 = 0.3;
+/// Wind shift range (degrees either side of the mean) the viewer starts with.
+const DEFAULT_SHIFT_DEG: f64 = 10.0;
 
 /// The browser's handle on the simulation: owns a `Sim` and runs it at its
 /// fixed step, however long the frame was.
@@ -21,6 +23,7 @@ pub struct Game {
     pending: f64,
     capsize_enabled: bool,
     gust_intensity: f64,
+    shift_deg: f64,
 }
 
 impl Game {
@@ -28,6 +31,7 @@ impl Game {
         self.sim = Sim::new(SimConfig {
             capsize_enabled: self.capsize_enabled,
             gust_intensity: self.gust_intensity,
+            shift_intensity: self.shift_deg.to_radians(),
             seed: 1,
             ..SimConfig::default()
         });
@@ -46,6 +50,7 @@ impl Game {
     pub fn new(wind_speed: f64, wind_dir_deg: f64) -> Game {
         let config = SimConfig {
             gust_intensity: DEFAULT_GUST_INTENSITY,
+            shift_intensity: DEFAULT_SHIFT_DEG.to_radians(),
             seed: 1,
             ..SimConfig::default()
         };
@@ -70,6 +75,7 @@ impl Game {
             pending: 0.0,
             capsize_enabled: true,
             gust_intensity: DEFAULT_GUST_INTENSITY,
+            shift_deg: DEFAULT_SHIFT_DEG,
         }
     }
 
@@ -93,6 +99,16 @@ impl Game {
 
     pub fn gust_intensity(&self) -> f64 {
         self.gust_intensity
+    }
+
+    /// Largest wind shift in degrees either side of the mean direction (0 = steady); restarts the run.
+    pub fn set_shift_deg(&mut self, deg: f64) {
+        self.shift_deg = deg.clamp(0.0, 45.0);
+        self.rebuild();
+    }
+
+    pub fn shift_deg(&self) -> f64 {
+        self.shift_deg
     }
 
     pub fn capsize_enabled(&self) -> bool {
@@ -138,6 +154,7 @@ impl Game {
             if status == Status::Capsized { 1.0 } else { 0.0 },
             self.time,
             self.sim.wind_speed(),
+            self.sim.wind_dir().to_degrees(),
         ]
     }
 
