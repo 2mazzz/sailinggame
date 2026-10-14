@@ -1,3 +1,4 @@
+use crate::foil;
 use crate::params::BoatParams;
 
 const AIR_DENSITY: f64 = 1.225;
@@ -43,7 +44,11 @@ pub fn sail_force(params: &BoatParams, wind: &ApparentWind, sheet: f64) -> (f64,
     let boom_angle = params.boom_angle_eased + (params.boom_angle_in - params.boom_angle_eased) * sheet;
     let alpha = wind.angle.abs() - boom_angle;
 
-    let (cl, cd) = sail_coefficients(params, alpha);
+    let (cl, cd) = if alpha <= 0.0 {
+        (0.0, params.sail.drag_zero_lift)
+    } else {
+        foil::coefficients(&params.sail, alpha)
+    };
     let q_s = 0.5 * AIR_DENSITY * wind.speed * wind.speed * params.sail_area;
 
     // Unit flow direction, and the unit lift direction: perpendicular to
@@ -56,23 +61,4 @@ pub fn sail_force(params: &BoatParams, wind: &ApparentWind, sheet: f64) -> (f64,
         q_s * (cl * lift_dir.0 + cd * flow_f),
         q_s * (cl * lift_dir.1 + cd * flow_s),
     )
-}
-
-/// Lift and drag coefficients: attached-flow lift and induced drag blend
-/// into flat-plate behaviour as the sail stalls.
-fn sail_coefficients(params: &BoatParams, alpha: f64) -> (f64, f64) {
-    if alpha <= 0.0 {
-        return (0.0, params.sail_drag_zero_lift);
-    }
-    let x = alpha / params.sail_stall_angle;
-    let stalled = x * x / (1.0 + x * x);
-
-    let cl_attached = params.sail_lift_slope * alpha;
-    let cl_plate = params.sail_plate_normal * alpha.sin() * alpha.cos();
-    let cl = (1.0 - stalled) * cl_attached + stalled * cl_plate;
-
-    let induced = cl_attached * cl_attached / (std::f64::consts::PI * 0.7 * params.sail_aspect_ratio);
-    let cd_plate = params.sail_plate_normal * alpha.sin().powi(2);
-    let cd = params.sail_drag_zero_lift + (1.0 - stalled) * induced + stalled * cd_plate;
-    (cl, cd)
 }

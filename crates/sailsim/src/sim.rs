@@ -1,5 +1,5 @@
 use crate::aero::{apparent_wind, sail_force};
-use crate::hydro::hull_resistance;
+use crate::hydro::{board_force, hull_resistance};
 use crate::integrator::rk4;
 use crate::params::BoatParams;
 use crate::state::{BoatState, Controls, Status};
@@ -71,24 +71,27 @@ impl Sim {
 
     pub fn step(&mut self, controls: Controls) -> StepOutput {
         let s = &self.state;
-        let y = [s.x, s.y, s.heading, s.surge];
+        let y = [s.x, s.y, s.heading, s.surge, s.sway];
         let params = self.params;
         let (wind_speed, wind_dir, sheet) = (self.wind_speed, self.wind_dir, controls.sheet);
         let y = rk4(y, self.config.dt, |y| {
-            let [_, _, heading, surge] = *y;
-            let wind = apparent_wind(wind_speed, wind_dir, heading, surge, 0.0);
-            let (sail_surge, _sail_sway) = sail_force(&params, &wind, sheet);
+            let [_, _, heading, surge, sway] = *y;
+            let wind = apparent_wind(wind_speed, wind_dir, heading, surge, sway);
+            let (sail_surge, sail_sway) = sail_force(&params, &wind, sheet);
+            let (board_surge, board_sway) = board_force(&params, surge, sway);
             [
-                surge * heading.sin(),
-                surge * heading.cos(),
+                surge * heading.sin() + sway * heading.cos(),
+                surge * heading.cos() - sway * heading.sin(),
                 0.0,
-                (sail_surge + hull_resistance(&params, surge)) / params.surge_mass,
+                (sail_surge + board_surge + hull_resistance(&params, surge)) / params.surge_mass,
+                (sail_sway + board_sway) / params.sway_mass,
             ]
         });
         self.state.x = y[0];
         self.state.y = y[1];
         self.state.heading = y[2];
         self.state.surge = y[3];
+        self.state.sway = y[4];
         StepOutput { state: self.state, status: self.status }
     }
 }

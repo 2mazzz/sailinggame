@@ -1,3 +1,16 @@
+/// Lift/drag characteristics of a foil (sail, centreboard, rudder).
+#[derive(Debug, Clone, Copy)]
+pub struct FoilParams {
+    /// Attached-flow lift slope (per rad).
+    pub lift_slope: f64,
+    /// Angle of attack where stall blends in (rad).
+    pub stall_angle: f64,
+    pub drag_zero_lift: f64,
+    pub aspect_ratio: f64,
+    /// Flat-plate normal-force coefficient, used once stalled.
+    pub plate_normal: f64,
+}
+
 /// Physical parameters of a boat, SI units.
 #[derive(Debug, Clone, Copy)]
 pub struct BoatParams {
@@ -11,13 +24,12 @@ pub struct BoatParams {
     /// Boom angle from the centreline when the sheet is fully eased / fully in (rad).
     pub boom_angle_eased: f64,
     pub boom_angle_in: f64,
-    /// Attached-flow lift slope (per rad), stall angle (rad), zero-lift drag,
-    /// aspect ratio, and flat-plate normal-force coefficient.
-    pub sail_lift_slope: f64,
-    pub sail_stall_angle: f64,
-    pub sail_drag_zero_lift: f64,
-    pub sail_aspect_ratio: f64,
-    pub sail_plate_normal: f64,
+    pub sail: FoilParams,
+    /// Hull + crew + added mass in sway (kg).
+    pub sway_mass: f64,
+    /// Centreboard (plus hull and rudder lateral area), area in m^2.
+    pub board: FoilParams,
+    pub board_area: f64,
 }
 
 impl BoatParams {
@@ -31,11 +43,22 @@ impl BoatParams {
             sail_area: 7.0,
             boom_angle_eased: 90.0_f64.to_radians(),
             boom_angle_in: 5.0_f64.to_radians(),
-            sail_lift_slope: 4.5,
-            sail_stall_angle: 0.35,
-            sail_drag_zero_lift: 0.04,
-            sail_aspect_ratio: 3.0,
-            sail_plate_normal: 1.2,
+            sway_mass: 250.0,
+            board: FoilParams {
+                lift_slope: 3.1,
+                stall_angle: 0.25,
+                drag_zero_lift: 0.012,
+                aspect_ratio: 2.0,
+                plate_normal: 1.1,
+            },
+            board_area: 0.15,
+            sail: FoilParams {
+                lift_slope: 4.5,
+                stall_angle: 0.35,
+                drag_zero_lift: 0.04,
+                aspect_ratio: 3.0,
+                plate_normal: 1.2,
+            },
         }
     }
 }
