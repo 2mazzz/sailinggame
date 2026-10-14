@@ -59,6 +59,10 @@ pub struct BoatParams {
     /// Centreboard (plus hull and rudder lateral area), area in m^2.
     pub board: FoilParams,
     pub board_area: f64,
+    /// Low-speed sideways resistance (N s/m), fading out as surge speed
+    /// approaches several times `low_speed_lateral_speed` (m/s).
+    pub low_speed_lateral_damping: f64,
+    pub low_speed_lateral_speed: f64,
 }
 
 impl BoatParams {
@@ -81,6 +85,8 @@ impl BoatParams {
                 plate_normal: 1.1,
             },
             board_area: 0.15,
+            low_speed_lateral_damping: 400.0,
+            low_speed_lateral_speed: 0.5,
             displacement_mass: 140.0,
             righting_arm_max: 0.45,
             vanishing_heel: 85.0_f64.to_radians(),
