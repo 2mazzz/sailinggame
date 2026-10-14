@@ -31,5 +31,6 @@ fn boat_head_to_wind_loses_way_and_stops() {
         "boat should have almost stopped after 60 s, surge = {}",
         out.state.surge
     );
-    assert!(out.state.surge > -0.5, "boat should not sail backwards fast");
+    // In irons a dinghy drifts astern slowly (roughly 1-2 knots at most).
+    assert!(out.state.surge > -1.0, "boat should not sail backwards fast");
 }

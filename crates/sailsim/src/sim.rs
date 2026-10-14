@@ -1,3 +1,4 @@
+use crate::aero::{apparent_wind, sail_force};
 use crate::hydro::hull_resistance;
 use crate::integrator::rk4;
 use crate::params::BoatParams;
@@ -37,6 +38,8 @@ pub struct StepOutput {
 pub struct Sim {
     config: SimConfig,
     params: BoatParams,
+    wind_speed: f64,
+    wind_dir: f64,
     state: BoatState,
     status: Status,
 }
@@ -46,12 +49,16 @@ impl Sim {
         Self {
             config,
             params: BoatParams::ilca_like(),
+            wind_speed: 0.0,
+            wind_dir: 0.0,
             state: BoatState::default(),
             status: Status::Sailing,
         }
     }
 
     pub fn reset(&mut self, scenario: Scenario) {
+        self.wind_speed = scenario.true_wind_speed;
+        self.wind_dir = scenario.true_wind_dir;
         self.state = BoatState {
             x: scenario.start_x,
             y: scenario.start_y,
@@ -62,17 +69,20 @@ impl Sim {
         self.status = Status::Sailing;
     }
 
-    pub fn step(&mut self, _controls: Controls) -> StepOutput {
+    pub fn step(&mut self, controls: Controls) -> StepOutput {
         let s = &self.state;
         let y = [s.x, s.y, s.heading, s.surge];
         let params = self.params;
+        let (wind_speed, wind_dir, sheet) = (self.wind_speed, self.wind_dir, controls.sheet);
         let y = rk4(y, self.config.dt, |y| {
             let [_, _, heading, surge] = *y;
+            let wind = apparent_wind(wind_speed, wind_dir, heading, surge, 0.0);
+            let (sail_surge, _sail_sway) = sail_force(&params, &wind, sheet);
             [
                 surge * heading.sin(),
                 surge * heading.cos(),
                 0.0,
-                hull_resistance(&params, surge) / params.surge_mass,
+                (sail_surge + hull_resistance(&params, surge)) / params.surge_mass,
             ]
         });
         self.state.x = y[0];

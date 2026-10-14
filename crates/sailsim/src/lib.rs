@@ -1,3 +1,4 @@
+mod aero;
 mod hydro;
 mod integrator;
 mod params;
