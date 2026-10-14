@@ -1,7 +1,10 @@
 use sailsim::{BoatState, Controls, Scenario, Sim, SimConfig};
 
 fn trajectory(wind_dir_deg: f64, start_heading_deg: f64, rudder_sign: f64) -> Vec<BoatState> {
-    let mut sim = Sim::new(SimConfig { capsize_enabled: false, ..SimConfig::default() });
+    let mut sim = Sim::new(SimConfig {
+        capsize_enabled: false,
+        ..SimConfig::default()
+    });
     sim.reset(Scenario {
         true_wind_speed: 7.0,
         true_wind_dir: wind_dir_deg.to_radians(),
@@ -47,7 +50,10 @@ fn mirroring_wind_heading_and_rudder_mirrors_the_trajectory() {
                 ("yaw_rate", a.yaw_rate, mirrored.yaw_rate),
                 ("heel", a.heel, mirrored.heel),
             ] {
-                assert!((l - r).abs() < 1e-9, "wind {wind}: {name} {l} vs mirrored {r}");
+                assert!(
+                    (l - r).abs() < 1e-9,
+                    "wind {wind}: {name} {l} vs mirrored {r}"
+                );
             }
         }
     }

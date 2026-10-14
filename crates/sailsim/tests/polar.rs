@@ -3,7 +3,10 @@ use sailsim::{Controls, Scenario, Sim, SimConfig};
 /// Steady speed after 90 s on a heading `twa` degrees off a 6 m/s wind
 /// (wind from the starboard side), with the sheet at `sheet`.
 fn steady_speed(twa_deg: f64, sheet: f64) -> f64 {
-    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
+    let mut sim = Sim::new(SimConfig {
+        fixed_heading: true,
+        ..SimConfig::default()
+    });
     sim.reset(Scenario {
         true_wind_speed: 6.0,
         true_wind_dir: twa_deg.to_radians(),
@@ -34,10 +37,19 @@ fn speed_peaks_on_a_reach_and_falls_close_hauled_and_dead_downwind() {
     let broad_reach = best_speed(135.0);
     let dead_downwind = best_speed(180.0);
 
-    assert!(close_hauled > 0.5, "should make way close-hauled: {close_hauled}");
+    assert!(
+        close_hauled > 0.5,
+        "should make way close-hauled: {close_hauled}"
+    );
     assert!(close_hauled < beam_reach, "{close_hauled} !< {beam_reach}");
-    assert!(dead_downwind < broad_reach, "{dead_downwind} !< {broad_reach}");
-    assert!(dead_downwind < beam_reach, "{dead_downwind} !< {beam_reach}");
+    assert!(
+        dead_downwind < broad_reach,
+        "{dead_downwind} !< {broad_reach}"
+    );
+    assert!(
+        dead_downwind < beam_reach,
+        "{dead_downwind} !< {beam_reach}"
+    );
     for v in [close_hauled, beam_reach, broad_reach, dead_downwind] {
         assert!(v < 4.8, "speed should stay below ~4.8 m/s, got {v}");
     }

@@ -12,7 +12,10 @@ struct Run {
 /// starboard side), sheet fixed, 90 s from rest.
 fn sail(twa_deg: f64, sheet: f64) -> Run {
     let wind_dir = twa_deg.to_radians();
-    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
+    let mut sim = Sim::new(SimConfig {
+        fixed_heading: true,
+        ..SimConfig::default()
+    });
     sim.reset(Scenario {
         true_wind_speed: WIND,
         true_wind_dir: wind_dir,
@@ -33,7 +36,10 @@ fn sail(twa_deg: f64, sheet: f64) -> Run {
             at_60 = progress(&state);
         }
     }
-    Run { vmg: (progress(&state) - at_60) / 30.0, final_state: state }
+    Run {
+        vmg: (progress(&state) - at_60) / 30.0,
+        final_state: state,
+    }
 }
 
 /// A sailor trims for the best upwind progress.
@@ -57,10 +63,20 @@ fn leeway_is_small_but_nonzero_and_points_downwind() {
     for twa in [45.0, -45.0] {
         let s = best_trim(twa, 20).final_state;
         let leeway_deg = (s.sway / s.surge).atan().to_degrees();
-        assert!(leeway_deg.abs() > 1.0, "tack {twa}: leeway {leeway_deg} deg too small");
-        assert!(leeway_deg.abs() < 10.0, "tack {twa}: leeway {leeway_deg} deg too big");
+        assert!(
+            leeway_deg.abs() > 1.0,
+            "tack {twa}: leeway {leeway_deg} deg too small"
+        );
+        assert!(
+            leeway_deg.abs() < 10.0,
+            "tack {twa}: leeway {leeway_deg} deg too big"
+        );
         // Wind from starboard pushes the boat to port (negative sway).
-        assert_eq!(leeway_deg.signum(), -twa.signum(), "tack {twa}: leeway {leeway_deg} deg");
+        assert_eq!(
+            leeway_deg.signum(),
+            -twa.signum(),
+            "tack {twa}: leeway {leeway_deg} deg"
+        );
     }
 }
 
@@ -68,7 +84,11 @@ fn leeway_is_small_but_nonzero_and_points_downwind() {
 fn best_upwind_angle_is_between_35_and_55_degrees() {
     let angles: Vec<f64> = (30..=70).step_by(5).map(f64::from).collect();
     let vmgs: Vec<f64> = angles.iter().map(|&a| best_trim(a, 10).vmg).collect();
-    let (best_idx, _) = vmgs.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)).unwrap();
+    let (best_idx, _) = vmgs
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.total_cmp(b.1))
+        .unwrap();
     let best_angle = angles[best_idx];
     assert!(
         (35.0..=55.0).contains(&best_angle),

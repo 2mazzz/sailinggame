@@ -31,6 +31,10 @@ Position x, y; heading; surge and sway velocity; yaw rate; heel angle and rate; 
 
 - **Constant wind** of given speed and direction (from `Scenario`). Gusts, shifts and waves are deferred.
 
+## Steering
+
+Yaw is part of milestone 1 (it was implicit in the original design; RL needs it). The rudder is a foil at the stern; it sees the water at the stern, so rotation and sideslip reduce its angle of attack (rudder damping). The centreboard sits ahead of the centre of gravity and the sail's centre of effort aft of it, giving a mild weather helm: a released helm rounds the boat up. `SimConfig::fixed_heading` locks the heading for tests and for curricula that learn sail trim first.
+
 ## Controls
 
 Rudder in [-1, 1], sheet in [0, 1], mapped to physical angles inside the crate. These are the RL action space.
@@ -93,6 +97,21 @@ Numerical:
 - Halving dt changes results within tolerance.
 
 Parameters are exposed for tuning. Tuning decisions are human-in-the-loop work.
+
+## Implementation status (milestone 1)
+
+Built test-first at these seams, all in `crates/sailsim/tests/`: rest and determinism, no-go zone, beam reach, speed polar, upwind and leeway, heel and capsize, mirror symmetry, steering and tacking, observation. 25 tests, `cargo test -p sailsim`.
+
+Deviations from the design above:
+- Steering/yaw and `fixed_heading` were added (see Steering). Mirror symmetry runs with free yaw.
+- `Observation` is a plain struct: apparent wind angle and speed, surge, sway, heel, heel rate, yaw rate, capsize margin.
+- Capsize threshold is 70 deg of heel; the stability curve vanishes at 85 deg. Past 90 deg a flat sail makes no force.
+- `SimConfig::seed` is reserved: with constant wind there is nothing random yet.
+
+Known model limits, to revisit:
+- Close-hauled is still optimistic (about 5.6 kn at 45 deg TWA in 11.7 kn of wind) and the boat can still sail at 30 deg TWA; the no-go zone is soft. Heel depowers the sail but there is no crew hiking or active depowering.
+- No planing: resistance is a simple linear + quadratic curve, tuned so beam-reach speed is plausible.
+- Tuning the parameters in `BoatParams::ilca_like()` for feel and realism is human-in-the-loop work.
 
 ## Out of scope
 

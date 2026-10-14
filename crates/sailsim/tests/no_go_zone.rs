@@ -16,22 +16,37 @@ fn head_to_wind() -> Scenario {
 
 #[test]
 fn boat_head_to_wind_loses_way_and_stops() {
-    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
+    let mut sim = Sim::new(SimConfig {
+        fixed_heading: true,
+        ..SimConfig::default()
+    });
     sim.reset(head_to_wind());
 
-    let mut out = sim.step(Controls { rudder: 0.0, sheet: 0.3 });
+    let mut out = sim.step(Controls {
+        rudder: 0.0,
+        sheet: 0.3,
+    });
     let mut max_speed = out.state.surge;
     for _ in 0..(60.0 / 0.02) as usize {
-        out = sim.step(Controls { rudder: 0.0, sheet: 0.3 });
+        out = sim.step(Controls {
+            rudder: 0.0,
+            sheet: 0.3,
+        });
         max_speed = max_speed.max(out.state.surge);
     }
 
-    assert!(max_speed <= 2.0 + 1e-9, "boat accelerated in irons: {max_speed}");
+    assert!(
+        max_speed <= 2.0 + 1e-9,
+        "boat accelerated in irons: {max_speed}"
+    );
     assert!(
         out.state.surge < 0.5,
         "boat should have almost stopped after 60 s, surge = {}",
         out.state.surge
     );
     // In irons a dinghy drifts astern slowly (roughly 1-2 knots at most).
-    assert!(out.state.surge > -1.0, "boat should not sail backwards fast");
+    assert!(
+        out.state.surge > -1.0,
+        "boat should not sail backwards fast"
+    );
 }

@@ -41,7 +41,8 @@ pub fn sail_force(params: &BoatParams, wind: &ApparentWind, sheet: f64) -> (f64,
         return (0.0, 0.0);
     }
     let sheet = sheet.clamp(0.0, 1.0);
-    let boom_angle = params.boom_angle_eased + (params.boom_angle_in - params.boom_angle_eased) * sheet;
+    let boom_angle =
+        params.boom_angle_eased + (params.boom_angle_in - params.boom_angle_eased) * sheet;
     let alpha = wind.angle.abs() - boom_angle;
 
     let (cl, cd) = if alpha <= 0.0 {

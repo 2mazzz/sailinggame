@@ -15,7 +15,11 @@ fn sim_with(wind_speed: f64, wind_dir_deg: f64, start_heel_deg: f64, config: Sim
 }
 
 fn no_capsize() -> SimConfig {
-    SimConfig { capsize_enabled: false, fixed_heading: true, ..SimConfig::default() }
+    SimConfig {
+        capsize_enabled: false,
+        fixed_heading: true,
+        ..SimConfig::default()
+    }
 }
 
 /// Heel in degrees after `seconds` close-hauled with wind from starboard.
@@ -35,15 +39,24 @@ fn heel_grows_with_wind_and_leans_away_from_it() {
 
     // Wind from starboard presses the sail to port: port side down (negative).
     assert!(light < -2.0, "light-air heel {light} deg");
-    assert!(fresh < light, "heel should grow with wind: {light} -> {fresh} deg");
-    assert!(fresh > -70.0, "should not be rolling over in a fresh breeze: {fresh} deg");
+    assert!(
+        fresh < light,
+        "heel should grow with wind: {light} -> {fresh} deg"
+    );
+    assert!(
+        fresh > -70.0,
+        "should not be rolling over in a fresh breeze: {fresh} deg"
+    );
 }
 
 #[test]
 fn easing_the_sheet_reduces_heel() {
     let sheeted_in = close_hauled_heel(7.0, 0.85, 40.0);
     let eased = close_hauled_heel(7.0, 0.30, 40.0);
-    assert!(eased.abs() < 0.5 * sheeted_in.abs(), "{sheeted_in} deg -> {eased} deg");
+    assert!(
+        eased.abs() < 0.5 * sheeted_in.abs(),
+        "{sheeted_in} deg -> {eased} deg"
+    );
 }
 
 #[test]
@@ -51,9 +64,19 @@ fn a_heeled_boat_rights_itself_below_the_vanishing_angle() {
     let mut sim = sim_with(0.0, 0.0, 60.0, no_capsize());
     let mut heel = 0.0;
     for _ in 0..(30.0 / 0.02) as usize {
-        heel = sim.step(Controls { rudder: 0.0, sheet: 0.5 }).state.heel;
+        heel = sim
+            .step(Controls {
+                rudder: 0.0,
+                sheet: 0.5,
+            })
+            .state
+            .heel;
     }
-    assert!(heel.to_degrees().abs() < 2.0, "heel after 30 s: {} deg", heel.to_degrees());
+    assert!(
+        heel.to_degrees().abs() < 2.0,
+        "heel after 30 s: {} deg",
+        heel.to_degrees()
+    );
 }
 
 #[test]
@@ -61,7 +84,17 @@ fn beyond_the_vanishing_angle_the_boat_keeps_rolling() {
     let mut sim = sim_with(0.0, 0.0, 100.0, no_capsize());
     let mut heel = 0.0;
     for _ in 0..(30.0 / 0.02) as usize {
-        heel = sim.step(Controls { rudder: 0.0, sheet: 0.5 }).state.heel;
+        heel = sim
+            .step(Controls {
+                rudder: 0.0,
+                sheet: 0.5,
+            })
+            .state
+            .heel;
     }
-    assert!(heel.to_degrees() > 120.0, "should roll further over, heel {} deg", heel.to_degrees());
+    assert!(
+        heel.to_degrees() > 120.0,
+        "should roll further over, heel {} deg",
+        heel.to_degrees()
+    );
 }

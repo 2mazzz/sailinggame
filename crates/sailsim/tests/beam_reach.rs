@@ -23,15 +23,24 @@ fn surge_after(sim: &mut Sim, seconds: f64, controls: Controls) -> f64 {
 
 #[test]
 fn beam_reach_accelerates_to_a_plausible_steady_speed() {
-    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
+    let mut sim = Sim::new(SimConfig {
+        fixed_heading: true,
+        ..SimConfig::default()
+    });
     sim.reset(beam_reach());
-    let controls = Controls { rudder: 0.0, sheet: 0.5 };
+    let controls = Controls {
+        rudder: 0.0,
+        sheet: 0.5,
+    };
 
     let at_10s = surge_after(&mut sim, 10.0, controls);
     let at_50s = surge_after(&mut sim, 40.0, controls);
     let at_60s = surge_after(&mut sim, 10.0, controls);
 
-    assert!(at_10s > 1.0, "boat should be well under way after 10 s: {at_10s}");
+    assert!(
+        at_10s > 1.0,
+        "boat should be well under way after 10 s: {at_10s}"
+    );
     assert!(
         (2.0..4.8).contains(&at_60s),
         "beam-reach speed in 6 m/s wind should be a few m/s, got {at_60s}"

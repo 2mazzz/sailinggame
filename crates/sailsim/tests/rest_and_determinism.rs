@@ -14,12 +14,21 @@ fn calm_scenario() -> Scenario {
 
 #[test]
 fn boat_at_rest_in_no_wind_stays_put() {
-    let mut sim = Sim::new(SimConfig { fixed_heading: true, ..SimConfig::default() });
+    let mut sim = Sim::new(SimConfig {
+        fixed_heading: true,
+        ..SimConfig::default()
+    });
     sim.reset(calm_scenario());
 
-    let mut out = sim.step(Controls { rudder: 0.0, sheet: 0.5 });
+    let mut out = sim.step(Controls {
+        rudder: 0.0,
+        sheet: 0.5,
+    });
     for _ in 0..1000 {
-        out = sim.step(Controls { rudder: 0.0, sheet: 0.5 });
+        out = sim.step(Controls {
+            rudder: 0.0,
+            sheet: 0.5,
+        });
     }
 
     assert_eq!(out.status, Status::Sailing);
@@ -38,7 +47,11 @@ fn same_seed_and_controls_give_identical_trajectories() {
         ..calm_scenario()
     };
     let run = |seed: u64| {
-        let mut sim = Sim::new(SimConfig { seed, fixed_heading: true, ..SimConfig::default() });
+        let mut sim = Sim::new(SimConfig {
+            seed,
+            fixed_heading: true,
+            ..SimConfig::default()
+        });
         sim.reset(scenario);
         (0..500)
             .map(|i| {
