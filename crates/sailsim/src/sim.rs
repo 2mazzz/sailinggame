@@ -81,6 +81,21 @@ impl Sim {
         self.status = Status::Sailing;
     }
 
+    /// Change the true wind while running. `dir` is where it blows from
+    /// (radians clockwise from north).
+    pub fn set_wind(&mut self, speed: f64, dir: f64) {
+        self.wind_speed = speed;
+        self.wind_dir = dir;
+    }
+
+    pub fn state(&self) -> BoatState {
+        self.state
+    }
+
+    pub fn status(&self) -> Status {
+        self.status
+    }
+
     pub fn observation(&self) -> Observation {
         let s = &self.state;
         let wind = apparent_wind(self.wind_speed, self.wind_dir, s.heading, s.surge, s.sway);
