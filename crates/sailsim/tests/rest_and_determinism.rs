@@ -7,6 +7,7 @@ fn calm_scenario() -> Scenario {
         start_x: 10.0,
         start_y: -5.0,
         start_heading: 1.0,
+        start_speed: 0.0,
     }
 }
 
