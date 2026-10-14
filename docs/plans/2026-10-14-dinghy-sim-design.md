@@ -105,16 +105,17 @@ Built test-first at these seams, all in `crates/sailsim/tests/`: rest and determ
 Deviations from the design above:
 - Steering/yaw and `fixed_heading` were added (see Steering). Mirror symmetry runs with free yaw.
 - `Observation` is a plain struct: apparent wind angle and speed, surge, sway, heel, heel rate, yaw rate, capsize margin.
-- Weather helm is mild (`board_arm` 0.42 m): on a beam reach a released rudder drifts about 2 deg in 30 s (test `helm`). Source validation of this value is pending (see `docs/research/`).
+- Weather helm is mild (`board_arm` 0.76 m, retuned from 0.42 m when the rudder area rose to 0.09 m^2): on a beam reach a released rudder drifts about 2 deg in 30 s (test `helm`). Source validation of this value is pending (see `docs/research/`).
 - Capsize threshold is 70 deg of heel; the stability curve vanishes at 85 deg. Past 90 deg a flat sail makes no force.
 - `SimConfig::seed` is reserved: with constant wind there is nothing random yet.
 
 Known model limits, to revisit:
 - Close-hauled is still optimistic (about 5.6 kn at 45 deg TWA in 11.7 kn of wind) and the boat can still sail at 30 deg TWA; the no-go zone is soft. Heel depowers the sail but there is no crew hiking or active depowering.
 - No planing: resistance is a simple linear + quadratic curve, tuned so beam-reach speed is plausible.
+- Particulars are sourced from the research doc (ticket 13): displacement 160 kg and surge mass 170 kg (high confidence; the 10 kg added mass is an estimate), rudder area 0.09 m^2 (LOW confidence: my estimate from the class drawing, not a published figure). Board area 0.15 m^2 and the hull lateral area are still unsourced. `board_arm` 0.76 m has no source: it was retuned only to keep the weather helm mild after the rudder grew, and puts the sail CE about 1 m aft of the board, more than the research thinks plausible. Heel and yaw inertia were not scaled for the extra rig mass.
 - Tuning the parameters in `BoatParams::ilca_like()` for feel and realism is human-in-the-loop work.
 
 ## Out of scope
 
 - Waves, gusts, wind shifts, planing, hiking dynamics, capsize recovery.
-- **Course layer** (own design doc): a map with goals the boat must reach in a specific order. Marks, order, rounding detection, progress and reward, episode termination, and its use from both the Gymnasium env and the game. It sits on top of `sailsim` as a separate crate, because it is game/RL logic, not physics.
+- **Course layer** (own design doc: [course layer design](2026-10-14-course-layer-design.md)): a map with goals the boat must reach in a specific order. Marks, order, rounding detection, progress and reward, episode termination, and its use from both the Gymnasium env and the game. It sits on top of `sailsim` as a separate crate, because it is game/RL logic, not physics.

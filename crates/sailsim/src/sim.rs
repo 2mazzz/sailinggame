@@ -116,6 +116,11 @@ impl Sim {
         self.wind_dir + self.config.shift_intensity * self.shifts.value()
     }
 
+    /// Fixed timestep (s) per `step`.
+    pub fn dt(&self) -> f64 {
+        self.config.dt
+    }
+
     /// Live true wind speed (m/s), including the current gust.
     pub fn wind_speed(&self) -> f64 {
         self.wind_speed * (1.0 + self.config.gust_intensity * self.gusts.value())
