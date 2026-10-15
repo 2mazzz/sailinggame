@@ -2,6 +2,7 @@
 //! and episode end. See docs/plans/2026-10-14-course-layer-design.md.
 
 pub mod baseline;
+pub mod observation;
 
 use sailsim::{Controls, Scenario, Sim, Status};
 
@@ -16,6 +17,29 @@ pub struct Course {
     pub marks: Vec<Mark>,
     /// A mark is reached when the boat is within this distance (m) of it.
     pub mark_radius: f64,
+}
+
+/// A mark is reached within this many metres on the default course.
+pub const DEFAULT_MARK_RADIUS: f64 = 6.0;
+
+/// Default course (x, y pairs, metres; x east, y north): a reverse C that
+/// starts at the top. East along the top, south down the back, west along the
+/// bottom, so for a northerly wind it is a beam reach, a run, then a beam reach.
+/// Tight on purpose: marks 35 to 50 m apart with a 6 m radius, so the angle
+/// you come in at decides how well you round each one.
+const DEFAULT_MARKS: [(f64, f64); 5] = [
+    (50.0, 0.0),
+    (75.0, -25.0),
+    (75.0, -65.0),
+    (50.0, -90.0),
+    (0.0, -90.0),
+];
+
+pub fn default_course() -> Course {
+    Course {
+        marks: DEFAULT_MARKS.iter().map(|&(x, y)| Mark { x, y }).collect(),
+        mark_radius: DEFAULT_MARK_RADIUS,
+    }
 }
 
 /// Distance (m) and bearing (rad clockwise from north) to the next mark.

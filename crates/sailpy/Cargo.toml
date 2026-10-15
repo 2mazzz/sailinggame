@@ -1,0 +1,13 @@
+[package]
+name = "sailpy"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+sailsim = { path = "../sailsim" }
+sailcourse = { path = "../sailcourse" }
+pyo3 = { version = "0.25", features = ["extension-module"] }

@@ -2,3 +2,9 @@ target/
 node_modules/
 web/dist/
 web/src/wasm/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+python/sailing/*.so
+web/public/runs/

@@ -1,3 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/sailsim", "crates/sailsim-wasm", "crates/sailcourse"]
+members = ["crates/sailsim", "crates/sailsim-wasm", "crates/sailcourse", "crates/sailpy"]
+# sailpy is an extension module that only links under maturin, so plain
+# `cargo build/test` skips it. Build it with `maturin develop -m crates/sailpy/Cargo.toml`.
+default-members = ["crates/sailsim", "crates/sailsim-wasm", "crates/sailcourse"]

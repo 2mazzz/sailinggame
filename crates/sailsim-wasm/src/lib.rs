@@ -1,4 +1,4 @@
-use sailcourse::{Course, CourseRun, Mark, Outcome};
+use sailcourse::{default_course, Course, CourseRun, Mark, Outcome, DEFAULT_MARK_RADIUS};
 use sailsim::{Controls, Scenario, Sim, SimConfig, Status};
 use wasm_bindgen::prelude::*;
 
@@ -12,29 +12,6 @@ const SNAPSHOT_LEN: usize = 13;
 const DEFAULT_GUST_INTENSITY: f64 = 0.0;
 /// Wind shift range (degrees either side of the mean) the viewer starts with.
 const DEFAULT_SHIFT_DEG: f64 = 10.0;
-
-/// A mark is reached within this many metres.
-const MARK_RADIUS: f64 = 6.0;
-
-/// Default course (x, y pairs, metres; x east, y north): a reverse C that
-/// starts at the top. East along the top, south down the back, west along the
-/// bottom, so for a northerly wind it is a beam reach, a run, then a beam reach.
-/// Tight on purpose: marks 35 to 50 m apart with a 6 m radius, so the angle
-/// you come in at decides how well you round each one.
-const DEFAULT_MARKS: [(f64, f64); 5] = [
-    (50.0, 0.0),
-    (75.0, -25.0),
-    (75.0, -65.0),
-    (50.0, -90.0),
-    (0.0, -90.0),
-];
-
-fn default_course() -> Course {
-    Course {
-        marks: DEFAULT_MARKS.iter().map(|&(x, y)| Mark { x, y }).collect(),
-        mark_radius: MARK_RADIUS,
-    }
-}
 
 /// The browser's handle on the simulation: owns a `Sim` and runs it at its
 /// fixed step, however long the frame was.
@@ -245,7 +222,7 @@ impl Game {
                 .zip(marks.iter().skip(1).step_by(2))
                 .map(|(&x, &y)| Mark { x, y })
                 .collect(),
-            mark_radius: MARK_RADIUS,
+            mark_radius: DEFAULT_MARK_RADIUS,
         };
         self.rebuild_with(course);
     }
