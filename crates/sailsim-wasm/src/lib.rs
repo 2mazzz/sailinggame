@@ -47,6 +47,12 @@ impl Game {
         self.rebuild_with(course);
     }
 
+    fn apply_variability(&mut self) {
+        self.run
+            .sim_mut()
+            .set_wind_variability(self.gust_intensity, self.shift_deg.to_radians());
+    }
+
     fn rebuild_with(&mut self, course: Course) {
         self.run = CourseRun::new(
             Sim::new(SimConfig {
@@ -115,20 +121,20 @@ impl Game {
         self.rebuild();
     }
 
-    /// Gust strength as a fraction of the mean wind (0 = steady); restarts the run.
+    /// Gust strength as a fraction of the mean wind (0 = steady); the run carries on.
     pub fn set_gust_intensity(&mut self, intensity: f64) {
         self.gust_intensity = intensity.clamp(0.0, 0.9);
-        self.rebuild();
+        self.apply_variability();
     }
 
     pub fn gust_intensity(&self) -> f64 {
         self.gust_intensity
     }
 
-    /// Largest wind shift in degrees either side of the mean direction (0 = steady); restarts the run.
+    /// Largest wind shift in degrees either side of the mean direction (0 = steady); the run carries on.
     pub fn set_shift_deg(&mut self, deg: f64) {
         self.shift_deg = deg.clamp(0.0, 45.0);
-        self.rebuild();
+        self.apply_variability();
     }
 
     pub fn shift_deg(&self) -> f64 {

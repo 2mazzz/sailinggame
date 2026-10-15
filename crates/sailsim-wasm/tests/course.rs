@@ -42,3 +42,19 @@ fn sailing_through_the_marks_finishes_with_a_time_and_reset_restarts() {
     assert_eq!(game.course_status(), 0);
     assert_eq!(game.course_progress()[0], 0.0);
 }
+
+#[test]
+fn changing_gust_and_shift_keeps_the_run_going() {
+    let mut game = Game::new(6.0, 0.0);
+    sail(&mut game, 5.0);
+    let before = game.snapshot();
+    game.set_gust_intensity(0.5);
+    game.set_shift_deg(20.0);
+    let after = game.snapshot();
+    assert!(before[10] > 0.0);
+    assert_eq!(after[0], before[0]);
+    assert_eq!(after[1], before[1]);
+    assert_eq!(after[10], before[10]);
+    assert_eq!(game.gust_intensity(), 0.5);
+    assert_eq!(game.shift_deg(), 20.0);
+}
