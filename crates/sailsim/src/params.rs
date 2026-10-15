@@ -61,6 +61,8 @@ pub struct BoatParams {
     pub displacement_mass: f64,
     /// Peak righting arm GZ (m), with the crew hiking.
     pub righting_arm_max: f64,
+    /// Extra righting arm (m) with the sailor leaning fully out (`hike` = 1).
+    pub hike_arm_extra: f64,
     /// Heel at which the righting moment vanishes (rad).
     pub vanishing_heel: f64,
     /// Heel at which the boat capsizes (mast in the water) (rad).
@@ -125,6 +127,8 @@ impl BoatParams {
             displacement_mass: 160.0,
             // Source: Taylor et al. (2016) measured 713 N m hiking moment for one subject; Day (2017) has a hiking crew's moment largest near upright. GZ 0.45 m on 160 kg gives about 700 N m. Confidence: medium (one subject). See docs/research/2026-10-14-dinghy-physics-validation.md Q6.
             righting_arm_max: 0.45,
+            // RETUNED, no source: about +33 % righting moment (about +235 N m) for a sailor leaning fully out beyond sitting on the gunwale.
+            hike_arm_extra: 0.15,
             vanishing_heel: 85.0_f64.to_radians(),
             capsize_heel: 70.0_f64.to_radians(),
             sail_heel_arm: 2.0,

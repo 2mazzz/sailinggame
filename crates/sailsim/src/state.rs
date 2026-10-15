@@ -12,11 +12,13 @@ pub struct BoatState {
     pub heel_rate: f64,
 }
 
-/// Normalised controls: rudder in [-1, 1], sheet in [0, 1].
+/// Normalised controls: rudder in [-1, 1], sheet in [0, 1], hike in [0, 1]
+/// (0 = sitting in as usual, 1 = leaning fully out).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Controls {
     pub rudder: f64,
     pub sheet: f64,
+    pub hike: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

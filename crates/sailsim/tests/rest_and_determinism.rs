@@ -23,11 +23,13 @@ fn boat_at_rest_in_no_wind_stays_put() {
     let mut out = sim.step(Controls {
         rudder: 0.0,
         sheet: 0.5,
+        hike: 0.0,
     });
     for _ in 0..1000 {
         out = sim.step(Controls {
             rudder: 0.0,
             sheet: 0.5,
+            hike: 0.0,
         });
     }
 
@@ -58,6 +60,7 @@ fn same_seed_and_controls_give_identical_trajectories() {
                 let c = Controls {
                     rudder: ((i as f64) * 0.05).sin() * 0.3,
                     sheet: 0.4,
+                    hike: 0.0,
                 };
                 sim.step(c).state
             })

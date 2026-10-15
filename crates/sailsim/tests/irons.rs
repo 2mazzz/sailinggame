@@ -25,9 +25,14 @@ fn recovery_time(rudder: f64, wind_dir: f64) -> Option<f64> {
             Controls {
                 rudder: (2.0 * (target - heading)).clamp(-1.0, 1.0),
                 sheet: 0.5,
+                hike: 0.0,
             }
         } else {
-            Controls { rudder, sheet: 0.0 }
+            Controls {
+                rudder,
+                sheet: 0.0,
+                hike: 0.0,
+            }
         };
         let s = sim.step(controls).state;
         if s.surge > 2.0 {

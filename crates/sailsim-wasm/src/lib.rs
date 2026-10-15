@@ -147,11 +147,13 @@ impl Game {
 
     /// Advance by `elapsed` real seconds (clamped so a stalled tab cannot
     /// trigger a spiral of catch-up steps) with the controls held constant.
-    pub fn advance(&mut self, elapsed: f64, rudder: f64, sheet: f64) {
+    /// `hike` is how far the sailor leans out, 0 (sitting in) to 1.
+    pub fn advance(&mut self, elapsed: f64, rudder: f64, sheet: f64, hike: f64) {
         self.pending += elapsed.clamp(0.0, 0.1);
         let controls = Controls {
             rudder: rudder.clamp(-1.0, 1.0),
             sheet: sheet.clamp(0.0, 1.0),
+            hike: hike.clamp(0.0, 1.0),
         };
         while self.pending >= self.dt {
             self.pending -= self.dt;

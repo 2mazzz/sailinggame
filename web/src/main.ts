@@ -9,6 +9,7 @@ const PX_PER_M = 14;
 const RUDDER_RATE = 2.5; // per second while a key is held
 const RUDDER_RETURN = 4.0; // per second back to centre when released
 const SHEET_RATE = 0.5;
+const HIKE_RATE = 2.0; // per second: the sailor takes about half a second to lean out or in
 const KN = 1.943844;
 
 // Snapshot field indices (see sailsim-wasm).
@@ -36,7 +37,8 @@ async function main() {
   sailPivot.addChild(sail);
   const rudderGfx = new Graphics();
   rudderGfx.y = 1.8;
-  boat.addChild(hull, sailPivot, rudderGfx);
+  const sailor = new Graphics();
+  boat.addChild(hull, sailPivot, rudderGfx, sailor);
   boat.scale.set(PX_PER_M);
   const trail = new Graphics();
   world.addChild(water, trail, boat);
@@ -103,6 +105,7 @@ async function main() {
   const trailPts: number[] = [];
   let rudder = 0;
   let sheet = 0.5;
+  let hike = 0;
   let sailAngle = 0;
 
   app.ticker.add((ticker) => {
@@ -117,8 +120,11 @@ async function main() {
     if (keys.has("ArrowUp") || keys.has("KeyW")) sheet += SHEET_RATE * dt;
     if (keys.has("ArrowDown") || keys.has("KeyS")) sheet -= SHEET_RATE * dt;
     sheet = Math.max(0, Math.min(1, sheet));
+    // Hold Space or Shift to lean out; releasing sits the sailor back in.
+    const hiking = keys.has("Space") || keys.has("ShiftLeft") || keys.has("ShiftRight");
+    hike = Math.max(0, Math.min(1, hike + (hiking ? 1 : -1) * HIKE_RATE * dt));
 
-    game.advance(dt, rudder, sheet);
+    game.advance(dt, rudder, sheet, hike);
     const s = game.snapshot();
     const awaNow = s[AWA];
 
@@ -158,6 +164,13 @@ async function main() {
     sailPivot.rotation = sailAngle; // the sail is drawn aft of the mast, so 0 lies along the centreline
     // Visual heel: squash the beam.
     boat.scale.x = PX_PER_M * Math.cos(s[HEEL]);
+    // The sailor sits on the windward side (opposite the boom) and leans out
+    // past the gunwale as `hike` rises.
+    const windward = awa >= 0 ? 1 : -1;
+    const sx = windward * (0.45 + 0.75 * hike);
+    sailor.clear().moveTo(windward * 0.3, 0.6).lineTo(sx, 0.6)
+      .stroke({ width: 0.22, color: 0x2c6fbb, cap: "round" })
+      .circle(sx + windward * 0.1, 0.6, 0.16).fill(0xf1c27d);
     rudderGfx.clear().moveTo(0, 0).lineTo(Math.sin(rudder * 0.6) * 0.5, Math.cos(rudder * 0.6) * 0.5)
       .stroke({ width: 0.1, color: 0x333333 });
 
@@ -193,10 +206,10 @@ async function main() {
       `heading  ${((deg(s[HEADING]) % 360) + 360) % 360 | 0} deg`,
       `TWA      ${twa.toFixed(0)} deg   wind ${(s[TWS] * KN).toFixed(1)} kn (mean ${windKn.toFixed(0)}) from ${(((s[TWD] % 360) + 360) % 360).toFixed(0)} (mean ${windFromDeg.toFixed(0)})`,
       `AWA/AWS  ${deg(awa).toFixed(0)} deg / ${(s[AWS] * KN).toFixed(1)} kn`,
-      `rudder   ${rudder.toFixed(2)}   sheet ${sheet.toFixed(2)} (1 = hard in)`,
+      `rudder   ${rudder.toFixed(2)}   sheet ${sheet.toFixed(2)} (1 = hard in)   hike ${hike.toFixed(2)}`,
       `capsize  ${game.capsize_enabled() ? "on" : "off"}`,
       ``,
-      `A/D or <-/->  rudder    W/S or up/down  sheet in/out`,
+      `A/D or <-/->  rudder    W/S or up/down  sheet in/out    hold Space/Shift  hike`,
       `cyan line = apparent wind direction`,
       `R reset    C toggle capsize`,
     ].join("\n");

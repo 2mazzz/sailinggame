@@ -17,6 +17,7 @@ fn gale_close_hauled(config: SimConfig, start_heel_deg: f64) -> Sim {
 const SHEETED_IN: Controls = Controls {
     rudder: 0.0,
     sheet: 1.0,
+    hike: 0.0,
 };
 
 fn run(
@@ -74,7 +75,11 @@ fn easing_the_sheet_when_heeled_over_avoids_the_capsize() {
         } else {
             0.85
         };
-        Controls { rudder: 0.0, sheet }
+        Controls {
+            rudder: 0.0,
+            sheet,
+            hike: 0.0,
+        }
     });
     assert_eq!(
         status,
@@ -99,6 +104,7 @@ fn capsize_is_terminal_and_freezes_the_boat() {
     let after = sim.step(Controls {
         rudder: 0.5,
         sheet: 0.0,
+        hike: 0.0,
     });
     assert_eq!(after.status, Status::Capsized);
     assert_eq!(after.state, frozen);

@@ -18,6 +18,7 @@ fn changing_the_wind_mid_run_changes_what_the_boat_feels() {
     let controls = Controls {
         rudder: 0.0,
         sheet: 0.5,
+        hike: 0.0,
     };
     for _ in 0..100 {
         sim.step(controls);

@@ -23,7 +23,11 @@ fn gusty(seed: u64, intensity: f64) -> Sim {
 }
 
 fn controls(sheet: f64) -> Controls {
-    Controls { rudder: 0.0, sheet }
+    Controls {
+        rudder: 0.0,
+        sheet,
+        hike: 0.0,
+    }
 }
 
 #[test]

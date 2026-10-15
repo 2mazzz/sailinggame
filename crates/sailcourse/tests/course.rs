@@ -35,6 +35,7 @@ fn run_on(marks: &[(f64, f64)]) -> CourseRun {
 const BEAM_REACH_CONTROLS: Controls = Controls {
     rudder: 0.0,
     sheet: 0.5,
+    hike: 0.0,
 };
 
 /// Step until the episode ends or `max_seconds` pass.
@@ -107,6 +108,7 @@ fn capsizing_ends_the_episode_with_its_own_outcome() {
     let controls = Controls {
         rudder: 0.0,
         sheet: 1.0,
+        hike: 0.0,
     };
     let Outcome::Capsized { time } = sail(&mut run, controls, 60.0) else {
         panic!("expected capsize, got {:?}", run.outcome());
@@ -127,7 +129,11 @@ fn the_same_seed_and_controls_give_the_same_result() {
         run.reset(beam_reach());
         for i in 0..3000 {
             let rudder = if (i / 100) % 2 == 0 { 0.1 } else { -0.1 };
-            run.step(Controls { rudder, sheet: 0.5 });
+            run.step(Controls {
+                rudder,
+                sheet: 0.5,
+                hike: 0.0,
+            });
         }
         (run.outcome(), run.progress())
     };

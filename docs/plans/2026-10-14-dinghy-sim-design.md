@@ -37,7 +37,7 @@ Yaw is part of milestone 1 (it was implicit in the original design; RL needs it)
 
 ## Controls
 
-Rudder in [-1, 1], sheet in [0, 1], mapped to physical angles inside the crate. These are the RL action space.
+Rudder in [-1, 1], sheet in [0, 1] and hike in [0, 1], mapped to physical quantities inside the crate. These are the RL action space. `hike` is how far the sailor leans out beyond the sitting-in baseline: it lengthens the righting arm by up to `hike_arm_extra` (0.15 m, about +33 % righting moment; tuned, no source). `hike` 0 is the baseline curve, so a run that never hikes is unchanged. It is an action, not an observation: the sailor's lean is the agent's own last command, so `Observation` is unchanged. The viewer holds Space or Shift to hike and draws the sailor leaning out on the windward side.
 
 ## Capsize
 
@@ -65,7 +65,7 @@ crates/sailsim/
 ```rust
 let mut sim = Sim::new(SimConfig { dt: 0.02, seed: 42, capsize_enabled: true, .. });
 sim.reset(Scenario { true_wind_speed: 6.0, true_wind_dir: 0.0, .. });
-let out = sim.step(Controls { rudder: 0.1, sheet: 0.5 });
+let out = sim.step(Controls { rudder: 0.1, sheet: 0.5, hike: 0.0 });
 // out.state, out.apparent_wind, out.status
 let obs = sim.observation(); // RL features
 ```
@@ -111,12 +111,12 @@ Deviations from the design above:
 
 Known model limits, to revisit:
 - The no-go zone is firm (ticket 4): pinned at 30 deg TWA in 6 m/s of wind the best-trimmed boat sustains about 1.4 m/s (was 1.7). This came from raising the minimum boom angle (`boom_angle_in`) from 5 to 21 deg (18 in the first pass, 21 after ticket 14 strengthened the sail), a tuned value with no source (a real boom reaches about 10 deg off the centreline). `sheet` 1.0 now means a fully sheeted 21 deg boom, so the capsize tests moved from sheet 0.85 to 1.0 to keep the same sail trim.
-- Ticket 14 (research priorities 1 to 3, landed together): the righting arm is now a hiking-crew curve (`tanh` build-up times a cosine fall-off, 0.45 m peak on 160 kg, about 700 N m upright), the sail depowers once its heeling moment passes 450 N m (easing to 35 % of raw force; `depower_moment`, `depower_floor`, both tuned, no source), sail lift is raised (slope 6.2, soft ceiling 1.15, sharper stall blend; a ceiling of 1.15 rather than the ORC 1.35 keeps the beam reach near 6.7 kn, the 12 kn reach target), and hull resistance is the Day and Nixon tank drag-area table with its hump at 6.5 kn. Results at 12 kn: 5.3 kn and VMG 3.4 kn at 44 deg (targets 5.4 and 3.75), heel about 1.5 deg (target 2.5), VMG about 3.9 kn at 16 kn and 4.1 kn at 20 kn, beam reach 6.8 kn (target 6.5). Light air VMG stays about 20 % low (1.9 kn at 5 kn against 2.3). Sheeted-in close-hauled capsize wind speed moved from 10.5 m/s (20 kn) to 10 m/s (19 kn) at 45 deg TWA, and on a beam reach from 10 m/s to 12.5 m/s. Tests: `published_targets`, `capsize`. Crew hiking is baked into the curve; a hike control (ticket 9) is still to come.
+- Ticket 14 (research priorities 1 to 3, landed together): the righting arm is now a hiking-crew curve (`tanh` build-up times a cosine fall-off, 0.45 m peak on 160 kg, about 700 N m upright), the sail depowers once its heeling moment passes 450 N m (easing to 35 % of raw force; `depower_moment`, `depower_floor`, both tuned, no source), sail lift is raised (slope 6.2, soft ceiling 1.15, sharper stall blend; a ceiling of 1.15 rather than the ORC 1.35 keeps the beam reach near 6.7 kn, the 12 kn reach target), and hull resistance is the Day and Nixon tank drag-area table with its hump at 6.5 kn. Results at 12 kn: 5.3 kn and VMG 3.4 kn at 44 deg (targets 5.4 and 3.75), heel about 1.5 deg (target 2.5), VMG about 3.9 kn at 16 kn and 4.1 kn at 20 kn, beam reach 6.8 kn (target 6.5). Light air VMG stays about 20 % low (1.9 kn at 5 kn against 2.3). Sheeted-in close-hauled capsize wind speed moved from 10.5 m/s (20 kn) to 10 m/s (19 kn) at 45 deg TWA, and on a beam reach from 10 m/s to 12.5 m/s. Tests: `published_targets`, `capsize`. Crew hiking is baked into the curve; the hike control (ticket 9) adds up to 0.15 m of arm on top of that (`hike_arm_extra`, tuned, no source); in `hiking` test terms, close-hauled at 45 deg a fully hiking sailor has clearly lower heel and survives 10.5 m/s, which capsizes a sailor sitting in.
 - No planing: resistance follows the tank drag-area table up to 9 kn and is held constant beyond, so there is no planing drop.
 - Particulars are sourced from the research doc (ticket 13): displacement 160 kg and surge mass 170 kg (high confidence; the 10 kg added mass is an estimate), rudder area 0.09 m^2 (LOW confidence: my estimate from the class drawing, not a published figure). Board area 0.15 m^2 and the hull lateral area are still unsourced. `board_arm` 0.76 m has no source: it was retuned only to keep the weather helm mild after the rudder grew, and puts the sail CE about 1 m aft of the board, more than the research thinks plausible. Heel and yaw inertia were not scaled for the extra rig mass.
 - Tuning the parameters in `BoatParams::ilca_like()` for feel and realism is human-in-the-loop work.
 
 ## Out of scope
 
-- Waves, gusts, wind shifts, planing, hiking dynamics, capsize recovery.
+- Waves, gusts, wind shifts, planing, hiking dynamics (the lean is instantaneous in the sim; only the viewer smooths it), capsize recovery.
 - **Course layer** (own design doc: [course layer design](2026-10-14-course-layer-design.md)): a map with goals the boat must reach in a specific order. Marks, order, rounding detection, progress and reward, episode termination, and its use from both the Gymnasium env and the game. It sits on top of `sailsim` as a separate crate, because it is game/RL logic, not physics.

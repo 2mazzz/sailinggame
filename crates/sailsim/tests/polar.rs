@@ -18,7 +18,14 @@ fn steady_speed(twa_deg: f64, sheet: f64) -> f64 {
     });
     let mut surge = 0.0;
     for _ in 0..(90.0 / 0.02) as usize {
-        surge = sim.step(Controls { rudder: 0.0, sheet }).state.surge;
+        surge = sim
+            .step(Controls {
+                rudder: 0.0,
+                sheet,
+                hike: 0.0,
+            })
+            .state
+            .surge;
     }
     surge
 }

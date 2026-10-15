@@ -25,6 +25,7 @@ fn shifty(seed: u64, intensity_deg: f64) -> Sim {
 const HOLD: Controls = Controls {
     rudder: 0.0,
     sheet: 0.8,
+    hike: 0.0,
 };
 
 #[test]

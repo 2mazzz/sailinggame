@@ -32,6 +32,7 @@ fn stalled_boat_head_to_wind_does_not_slide_sideways() {
                     .step(Controls {
                         rudder: 0.0,
                         sheet: 1.0,
+                        hike: 0.0,
                     })
                     .state;
                 max_sway = max_sway.max(s.sway.abs());

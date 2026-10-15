@@ -20,6 +20,7 @@ fn trajectory(wind_dir_deg: f64, start_heading_deg: f64, rudder_sign: f64) -> Ve
             let controls = Controls {
                 rudder: rudder_sign * 0.2 * (t * 0.5).sin(),
                 sheet: 0.4 + 0.3 * (t * 0.2).sin().abs(),
+                hike: 0.0,
             };
             sim.step(controls).state
         })

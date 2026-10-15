@@ -195,6 +195,7 @@ impl Sim {
         let params = self.params;
         let (wind_dir, sheet) = (self.wind_dir(), controls.sheet);
         let (rudder, fixed_heading) = (controls.rudder, self.config.fixed_heading);
+        let hike = controls.hike;
         let y = rk4(y, self.config.dt, |y| {
             let [_, _, heading, surge, sway, heel, heel_rate, yaw_rate] = *y;
             let wind = apparent_wind(wind_speed, wind_dir, heading, surge, sway);
@@ -222,7 +223,7 @@ impl Sim {
                 (sail_sway + board_sway + rudder_sway - params.surge_mass * surge * yaw_rate)
                     / params.sway_mass,
                 heel_rate,
-                (sail_sway * params.sail_heel_arm + righting_moment(&params, heel)
+                (sail_sway * params.sail_heel_arm + righting_moment(&params, heel, hike)
                     - params.heel_damping * heel_rate)
                     / params.heel_inertia,
                 if fixed_heading {

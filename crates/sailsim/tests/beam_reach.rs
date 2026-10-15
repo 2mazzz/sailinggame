@@ -31,6 +31,7 @@ fn beam_reach_accelerates_to_a_plausible_steady_speed() {
     let controls = Controls {
         rudder: 0.0,
         sheet: 0.5,
+        hike: 0.0,
     };
 
     let at_10s = surge_after(&mut sim, 10.0, controls);
@@ -64,6 +65,7 @@ fn heavier_sourced_boat_still_accelerates_from_rest_on_a_beam_reach() {
     let controls = Controls {
         rudder: 0.0,
         sheet: 0.5,
+        hike: 0.0,
     };
     let at_5s = surge_after(&mut sim, 5.0, controls);
     assert!(at_5s > 1.0, "surge after 5 s from rest: {at_5s}");

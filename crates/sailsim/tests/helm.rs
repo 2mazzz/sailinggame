@@ -18,6 +18,7 @@ fn a_released_rudder_holds_a_beam_reach_course() {
     let controls = Controls {
         rudder: 0.0,
         sheet: 0.5,
+        hike: 0.0,
     };
     let steps = |n: f64| (n / 0.02).round() as usize;
 

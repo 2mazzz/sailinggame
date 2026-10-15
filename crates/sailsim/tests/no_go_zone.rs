@@ -25,12 +25,14 @@ fn boat_head_to_wind_loses_way_and_stops() {
     let mut out = sim.step(Controls {
         rudder: 0.0,
         sheet: 0.3,
+        hike: 0.0,
     });
     let mut max_speed = out.state.surge;
     for _ in 0..(60.0 / 0.02) as usize {
         out = sim.step(Controls {
             rudder: 0.0,
             sheet: 0.3,
+            hike: 0.0,
         });
         max_speed = max_speed.max(out.state.surge);
     }

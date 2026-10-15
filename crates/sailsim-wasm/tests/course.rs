@@ -6,7 +6,7 @@ fn sail(game: &mut Game, seconds: f64) {
     for _ in 0..(seconds * 60.0) as usize {
         let err = game.course_progress()[2] - game.snapshot()[2];
         let err = (err + PI).rem_euclid(TAU) - PI;
-        game.advance(1.0 / 60.0, (2.0 * err).clamp(-1.0, 1.0), 0.5);
+        game.advance(1.0 / 60.0, (2.0 * err).clamp(-1.0, 1.0), 0.5, 0.0);
     }
 }
 
@@ -57,4 +57,19 @@ fn changing_gust_and_shift_keeps_the_run_going() {
     assert_eq!(after[10], before[10]);
     assert_eq!(game.gust_intensity(), 0.5);
     assert_eq!(game.shift_deg(), 20.0);
+}
+
+#[test]
+fn hiking_through_the_game_lowers_the_heel() {
+    let heel_after = |hike: f64| {
+        let mut game = Game::new(8.0, 45.0);
+        game.set_capsize_enabled(false);
+        // Close-hauled to a wind from 45 degrees, heading north.
+        for _ in 0..(40.0 * 60.0) as usize {
+            game.advance(1.0 / 60.0, 0.0, 1.0, hike);
+        }
+        game.snapshot()[3].abs()
+    };
+    let (sitting, hiking) = (heel_after(0.0), heel_after(1.0));
+    assert!(hiking < sitting, "heel sitting {sitting}, hiking {hiking}");
 }

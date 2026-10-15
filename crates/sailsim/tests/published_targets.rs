@@ -31,7 +31,13 @@ fn sail(wind_kn: f64, twa_deg: f64, sheet: f64) -> Run {
     let progress = |s: &BoatState| s.x * wind_dir.sin() + s.y * wind_dir.cos();
     let (mut at_60, mut state) = (0.0, BoatState::default());
     for i in 0..4500 {
-        state = sim.step(Controls { rudder: 0.0, sheet }).state;
+        state = sim
+            .step(Controls {
+                rudder: 0.0,
+                sheet,
+                hike: 0.0,
+            })
+            .state;
         if i == 2999 {
             at_60 = progress(&state);
         }

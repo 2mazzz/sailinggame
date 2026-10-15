@@ -27,7 +27,14 @@ fn close_hauled_heel(wind_speed: f64, sheet: f64, seconds: f64) -> f64 {
     let mut sim = sim_with(wind_speed, 45.0, 0.0, no_capsize());
     let mut heel = 0.0;
     for _ in 0..(seconds / 0.02) as usize {
-        heel = sim.step(Controls { rudder: 0.0, sheet }).state.heel;
+        heel = sim
+            .step(Controls {
+                rudder: 0.0,
+                sheet,
+                hike: 0.0,
+            })
+            .state
+            .heel;
     }
     heel.to_degrees()
 }
@@ -70,6 +77,7 @@ fn a_heeled_boat_rights_itself_below_the_vanishing_angle() {
             .step(Controls {
                 rudder: 0.0,
                 sheet: 0.5,
+                hike: 0.0,
             })
             .state
             .heel;
@@ -90,6 +98,7 @@ fn beyond_the_vanishing_angle_the_boat_keeps_rolling() {
             .step(Controls {
                 rudder: 0.0,
                 sheet: 0.5,
+                hike: 0.0,
             })
             .state
             .heel;

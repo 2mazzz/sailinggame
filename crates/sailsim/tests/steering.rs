@@ -26,7 +26,11 @@ fn run(sim: &mut Sim, seconds: f64, controls: Controls) -> BoatState {
 fn rudder_turns_the_boat_the_way_it_points_at_a_plausible_rate() {
     for (rudder, direction) in [(1.0, 1.0), (-1.0, -1.0)] {
         let mut sim = sim_with(0.0, 0.0, 0.0, 2.0);
-        let controls = Controls { rudder, sheet: 0.5 };
+        let controls = Controls {
+            rudder,
+            sheet: 0.5,
+            hike: 0.0,
+        };
         let mut peak_rate_deg = 0.0_f64;
         let mut state = BoatState::default();
         for _ in 0..(3.0 / 0.02) as usize {
@@ -54,6 +58,7 @@ fn a_stationary_boat_cannot_steer() {
         Controls {
             rudder: 1.0,
             sheet: 0.5,
+            hike: 0.0,
         },
     );
     assert!(
@@ -75,6 +80,7 @@ fn a_released_helm_rounds_the_boat_up_into_the_wind() {
         Controls {
             rudder: 0.0,
             sheet: 0.85,
+            hike: 0.0,
         },
     );
     assert!(
@@ -98,6 +104,7 @@ fn a_tack_loses_speed_and_recovers_it() {
         rudder: (2.0 * wrap(target_deg.to_radians() - state.heading) - 1.0 * state.yaw_rate)
             .clamp(-1.0, 1.0),
         sheet: 0.85,
+        hike: 0.0,
     };
 
     let mut state = BoatState::default();
