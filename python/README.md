@@ -11,9 +11,9 @@ env -u CONDA_PREFIX VIRTUAL_ENV=$PWD/.venv PATH=$PWD/.venv/bin:$PATH \
 .venv/bin/python -m pytest python/tests
 ```
 
-`SailEnv(capsize=True, fixed_heading=False, hike=False, wind_speed=13.0, wind_dir=0.0, gust=0.0, shift_deg=0.0, frame_skip=5, time_limit=150.0)`
+`SailEnv(rudder_limit=1.0, capsize=True, fixed_heading=False, hike=False, wind_speed=13.0, wind_dir=0.0, gust=0.0, shift_deg=0.0, frame_skip=5, time_limit=150.0)`
 
-- Actions in [-1, 1]: rudder, sheet, and hike when `hike=True`.
+- Actions in [-1, 1]: rudder, sheet, and hike when `hike=True`. `rudder_limit` caps the rudder at that fraction of full deflection (35 degrees); evolution defaults to 0.4 (about 14 degrees, near where a rudder stalls).
 - Observation: 13 inputs from `sailcourse::observation` (see that file), the same ones the browser will use.
 - Reward: `sailcourse` score per step (progress, mark bonuses, a finish bonus for speed, a time cost, a capsize penalty).
 - `reset(seed=...)` seeds gusts and shifts; the same seed gives the same episode.
@@ -21,7 +21,7 @@ env -u CONDA_PREFIX VIRTUAL_ENV=$PWD/.venv PATH=$PWD/.venv/bin:$PATH \
 ## Evolution
 
 ```sh
-.venv/bin/python -m sailing.evolve --out web/public/runs/figure8-5 --generations 100 --population 100
+.venv/bin/python -m sailing.evolve --out web/public/runs/rudder-0.4 --generations 100 --population 100
 ```
 
 Each generation 100 small networks sail the course once; the best 10 % carry over unchanged and the rest are mutated copies of the best 30 %. About 25 s for 100 generations on 8 cores. It writes `training.json` (per-generation best, mean, median, finish and capsize rates, mean finish time, the course, and the scripted baseline for reference) and a `gen_NNNN.json` replay of all boats for checkpoint generations. `web/public/runs/` is not committed; the viewer's Training page reads it.

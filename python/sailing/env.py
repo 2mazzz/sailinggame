@@ -18,6 +18,9 @@ class SailEnv(gym.Env):
     `hike=True`, hike (mapped to 0..1 lean). One step is `frame_skip` sim steps
     (0.02 s each), so the default is a decision every 0.1 s.
 
+    `rudder_limit` (0 to 1) caps the rudder at that fraction of full deflection
+    (35 degrees), so an action of 1 means `rudder_limit` of full rudder.
+
     Curriculum switches: `capsize=False` lets heel grow without ending the run,
     `fixed_heading=True` locks the heading so only sail trim matters.
     """
@@ -35,8 +38,10 @@ class SailEnv(gym.Env):
         shift_deg=0.0,
         frame_skip=5,
         time_limit=150.0,
+        rudder_limit=1.0,
     ):
         self._hike = hike
+        self.rudder_limit = rudder_limit
         self.wind_speed = wind_speed
         self.wind_dir = wind_dir
         self._core = Core(
@@ -53,7 +58,7 @@ class SailEnv(gym.Env):
     def baseline_action(self):
         """The scripted baseline agent's action now, in this env's action space."""
         rudder, sheet, hike = self._core.baseline_controls()
-        action = [rudder, 2.0 * sheet - 1.0] + ([2.0 * hike - 1.0] if self._hike else [])
+        action = [float(np.clip(rudder / self.rudder_limit, -1.0, 1.0)), 2.0 * sheet - 1.0] + ([2.0 * hike - 1.0] if self._hike else [])
         return np.asarray(action, dtype=np.float32)
 
     def _info(self):
@@ -78,7 +83,7 @@ class SailEnv(gym.Env):
 
     def step(self, action):
         a = np.asarray(action, dtype=np.float64)
-        rudder = a[0]
+        rudder = a[0] * self.rudder_limit
         sheet = (a[1] + 1.0) / 2.0
         hike = (a[2] + 1.0) / 2.0 if self._hike else 0.0
         obs, reward, terminated, truncated = self._core.step(rudder, sheet, hike)

@@ -25,6 +25,7 @@ def test_a_run_logs_each_generation_and_records_replays(tmp_path):
     # How the best boat used each control: rudder activity, sheet range and hike lean, all 0 to 1.
     for key in ("rudder", "sheet", "hike"):
         assert 0.0 <= g["best_controls"][key] <= 1.0
+    assert log["config"]["rudder_limit"] == 0.4
     assert log["course"]["radius"] == 6.0 and len(log["course"]["marks"]) == 8
     assert log["baseline"]["outcome"] in {"finished", "capsized", "time_limit"}
     # Elitism: the best score never goes down.

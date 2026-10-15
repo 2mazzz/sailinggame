@@ -37,9 +37,9 @@ def act(params, obs):
 _env = None
 
 
-def _init_worker(time_limit):
+def _init_worker(time_limit, rudder_limit):
     global _env
-    _env = SailEnv(time_limit=time_limit, hike=True)
+    _env = SailEnv(time_limit=time_limit, hike=True, rudder_limit=rudder_limit)
 
 
 def _pack(info, out):
@@ -131,6 +131,7 @@ def run(
     time_limit=150.0,
     sigma=0.3,
     sigma_final=0.03,
+    rudder_limit=0.4,
     elite_fraction=0.1,
     parent_fraction=0.3,
     init_scale=0.5,
@@ -144,7 +145,7 @@ def run(
     checkpoints = checkpoint_gens(generations)
 
     pop = rng.normal(0.0, init_scale, size=(population, PARAM_COUNT))
-    probe = SailEnv(time_limit=time_limit, hike=True)
+    probe = SailEnv(time_limit=time_limit, hike=True, rudder_limit=rudder_limit)
     course = probe.course
     log = {
         "config": {
@@ -153,6 +154,7 @@ def run(
             "seed": seed,
             "sigma": sigma,
             "sigma_final": sigma_final,
+            "rudder_limit": rudder_limit,
             "elite": elite,
             "time_limit": time_limit,
             "hidden": HIDDEN,
@@ -166,10 +168,10 @@ def run(
 
     pool = None
     if workers > 1:
-        pool = mp.get_context("spawn").Pool(workers, _init_worker, (time_limit,))
+        pool = mp.get_context("spawn").Pool(workers, _init_worker, (time_limit, rudder_limit))
         evaluate, base = pool.map, pool.map
     else:
-        _init_worker(time_limit)
+        _init_worker(time_limit, rudder_limit)
         evaluate, base = map, map
     try:
         baseline = list(base(_baseline, [0]))[0]
@@ -215,11 +217,13 @@ def main():
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--sigma", type=float, default=0.3)
     p.add_argument("--sigma-final", type=float, default=0.03)
+    p.add_argument("--rudder-limit", type=float, default=0.4, help="largest rudder as a fraction of full (35 deg)")
     p.add_argument("--time-limit", type=float, default=150.0)
     args = p.parse_args()
     log = run(
         args.out, args.population, args.generations, args.workers, args.seed, args.time_limit, args.sigma,
         args.sigma_final,
+        args.rudder_limit,
     )
     g = log["generations"][-1]
     print(f"gen {g['gen']}: best {g['best']:.0f}, finish rate {g['finish_rate']:.0%}")

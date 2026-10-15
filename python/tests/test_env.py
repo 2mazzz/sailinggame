@@ -98,3 +98,30 @@ def test_the_baseline_action_finishes_the_course_and_the_course_is_exposed():
         obs, _, terminated, truncated, info = env.step(env.baseline_action())
     assert info["outcome"] == "finished"
     assert info["score"] > 400
+
+
+def heading_after_hard_over(rudder_limit):
+    env = SailEnv(rudder_limit=rudder_limit, time_limit=30.0)
+    env.reset(seed=0)
+    for _ in range(40):
+        _, _, _, _, info = env.step(np.array([1.0, 0.0], dtype=np.float32))
+    return info["heading"]
+
+
+def test_the_rudder_limit_scales_the_largest_deflection():
+    start = SailEnv().reset(seed=0)[1]["heading"]
+    full = abs(heading_after_hard_over(1.0) - start)
+    limited = abs(heading_after_hard_over(0.3) - start)
+    assert 0.0 < limited < full
+
+
+def test_the_baseline_action_stays_in_range_with_a_limited_rudder():
+    env = SailEnv(rudder_limit=0.4, time_limit=100.0, wind_speed=11.0)
+    env.reset(seed=0)
+    done = False
+    while not done:
+        action = env.baseline_action()
+        assert np.all(np.abs(action) <= 1.0)
+        _, _, terminated, truncated, info = env.step(action)
+        done = terminated or truncated
+    assert info["outcome"] == "finished"
