@@ -14,17 +14,19 @@ const DEFAULT_GUST_INTENSITY: f64 = 0.0;
 const DEFAULT_SHIFT_DEG: f64 = 10.0;
 
 /// A mark is reached within this many metres.
-const MARK_RADIUS: f64 = 10.0;
+const MARK_RADIUS: f64 = 6.0;
 
 /// Default course (x, y pairs, metres; x east, y north): a reverse C that
 /// starts at the top. East along the top, south down the back, west along the
 /// bottom, so for a northerly wind it is a beam reach, a run, then a beam reach.
+/// Tight on purpose: marks 35 to 50 m apart with a 6 m radius, so the angle
+/// you come in at decides how well you round each one.
 const DEFAULT_MARKS: [(f64, f64); 5] = [
-    (90.0, 0.0),
-    (140.0, -45.0),
-    (140.0, -135.0),
-    (90.0, -180.0),
-    (0.0, -180.0),
+    (50.0, 0.0),
+    (75.0, -25.0),
+    (75.0, -65.0),
+    (50.0, -90.0),
+    (0.0, -90.0),
 ];
 
 fn default_course() -> Course {

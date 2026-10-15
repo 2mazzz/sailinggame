@@ -6,7 +6,7 @@ import { color, css, font, motion, radius, stroke } from "./theme";
 const WIND_KN = Number(new URLSearchParams(location.search).get("wind")) || 12;
 let windKn = WIND_KN;
 let windFromDeg = Number(new URLSearchParams(location.search).get("dir")) || 0; // wind blows from the north
-const PX_PER_M = 18;
+const PX_PER_M = 10;
 const RUDDER_RATE = 2.5; // per second while a key is held
 const RUDDER_RETURN = 4.0; // per second back to centre when released
 const SHEET_RATE = 0.5;
@@ -14,9 +14,10 @@ const HIKE_RATE = 2.0; // per second: the sailor takes about half a second to le
 const KN = 1.943844;
 const CAPSIZE_HEEL = (70 * Math.PI) / 180; // matches BoatParams::capsize_heel
 const SPEED_GAUGE_MAX_KN = 8;
-const ARROW_ORBIT_PX = 76; // radius of the next-mark arrow around the boat
-const HEEL_RING_PX = 56;
+const ARROW_ORBIT_PX = 54; // radius of the next-mark arrow around the boat
+const HEEL_RING_PX = 38;
 const GAUGE_W = 156;
+const WAVE_GRID_PX = 126; // spacing of the wave squiggles, in screen pixels
 const HUD_CHARS = 52; // widest HUD line, so the info card never changes size
 const HUD_LINES = 10;
 const MAP_W = 190, MAP_H = 230, MAP_PAD = 14; // minimap box, top left
@@ -258,7 +259,7 @@ async function main() {
     world.position.set(width / 2 - bx, height / 2 - by);
 
     // Little wave squiggles on a jittered grid so motion is visible.
-    const grid = 7 * PX_PER_M;
+    const grid = WAVE_GRID_PX;
     const gx0 = Math.floor((bx - width) / grid), gx1 = Math.ceil((bx + width) / grid);
     const gy0 = Math.floor((by - height) / grid), gy1 = Math.ceil((by + height) / grid);
     water.clear();

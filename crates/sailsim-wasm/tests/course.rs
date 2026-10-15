@@ -33,6 +33,21 @@ fn default_course_is_a_reverse_c_starting_at_the_top() {
 }
 
 #[test]
+fn default_course_is_tight_and_can_be_sailed() {
+    let mut game = Game::new(6.0, 0.0);
+    let marks = game.course_marks();
+    let mut prev = (0.0, 0.0);
+    for m in marks.chunks(2) {
+        let leg = (m[0] - prev.0).hypot(m[1] - prev.1);
+        assert!(leg <= 55.0, "leg of {leg} m is too long for a tight course");
+        prev = (m[0], m[1]);
+    }
+    assert!(game.mark_radius() <= 8.0);
+    sail(&mut game, 240.0);
+    assert_eq!(game.course_status(), 1, "a plain steer-at-the-mark run finishes");
+}
+
+#[test]
 fn sailing_through_the_marks_finishes_with_a_time_and_reset_restarts() {
     let mut game = Game::new(6.0, 0.0);
     game.set_course(vec![40.0, 0.0, 80.0, 0.0, 120.0, 0.0]);
