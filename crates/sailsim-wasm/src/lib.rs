@@ -179,6 +179,18 @@ impl Game {
         }
     }
 
+    /// Reward so far this episode: progress along the course, mark and finish
+    /// bonuses (bigger for a faster finish), less a small cost per second.
+    pub fn score(&self) -> f64 {
+        self.run.score()
+    }
+
+    /// What the scripted baseline agent would do now: `[rudder, sheet, hike]`.
+    pub fn baseline_controls(&self) -> Vec<f64> {
+        let c = sailcourse::baseline::baseline_controls(&self.run);
+        vec![c.rudder, c.sheet, c.hike]
+    }
+
     pub fn snapshot_len() -> usize {
         SNAPSHOT_LEN
     }

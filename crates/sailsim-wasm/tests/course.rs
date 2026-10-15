@@ -95,3 +95,23 @@ fn hiking_through_the_game_lowers_the_heel() {
     let (sitting, hiking) = (heel_after(0.0), heel_after(1.0));
     assert!(hiking < sitting, "heel sitting {sitting}, hiking {hiking}");
 }
+
+#[test]
+fn the_baseline_agent_finishes_the_default_course_with_a_positive_score() {
+    let mut game = Game::new(6.0, 0.0);
+    assert_eq!(game.score(), 0.0);
+    for _ in 0..(300.0 * 60.0) as usize {
+        let c = game.baseline_controls();
+        game.advance(1.0 / 60.0, c[0], c[1], c[2]);
+        if game.course_status() != 0 {
+            break;
+        }
+    }
+    assert_eq!(game.course_status(), 1, "baseline should finish");
+    let t = game.finish_time();
+    assert!(t < 250.0, "finished in {t} s");
+    // Five marks of progress, bonuses and a finish bonus that rewards a quick time.
+    assert!(game.score() > 400.0, "score {}", game.score());
+    game.reset();
+    assert_eq!(game.score(), 0.0);
+}

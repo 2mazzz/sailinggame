@@ -1,6 +1,8 @@
 //! Course layer on top of `sailsim`: ordered marks, progress, completion time
 //! and episode end. See docs/plans/2026-10-14-course-layer-design.md.
 
+pub mod baseline;
+
 use sailsim::{Controls, Scenario, Sim, Status};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,6 +40,37 @@ pub enum Outcome {
     },
 }
 
+/// How a run is scored: progress along the course and how fast it is made.
+/// These weights are the shared reward for the viewer and the RL environment.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RewardConfig {
+    /// Per metre gained towards the next mark (negative when losing ground).
+    pub progress_per_m: f64,
+    /// For each mark reached, in order.
+    pub mark_bonus: f64,
+    /// At the finish, scaled down linearly to zero as the time reaches `finish_time_ref`.
+    pub finish_bonus: f64,
+    /// Finishing in this many seconds or more earns no finish bonus.
+    pub finish_time_ref: f64,
+    /// Lost every second the run is in progress, so speed pays all along.
+    pub time_penalty_per_s: f64,
+    /// Lost once when the boat capsizes before the last mark.
+    pub capsize_penalty: f64,
+}
+
+impl Default for RewardConfig {
+    fn default() -> Self {
+        Self {
+            progress_per_m: 1.0,
+            mark_bonus: 50.0,
+            finish_bonus: 300.0,
+            finish_time_ref: 300.0,
+            time_penalty_per_s: 0.2,
+            capsize_penalty: 100.0,
+        }
+    }
+}
+
 pub struct CourseRun {
     sim: Sim,
     course: Course,
@@ -45,6 +78,9 @@ pub struct CourseRun {
     steps: u64,
     next: usize,
     outcome: Outcome,
+    reward: RewardConfig,
+    score: f64,
+    last_reward: f64,
 }
 
 impl CourseRun {
@@ -57,7 +93,25 @@ impl CourseRun {
             steps: 0,
             next: 0,
             outcome: Outcome::InProgress,
+            reward: RewardConfig::default(),
+            score: 0.0,
+            last_reward: 0.0,
         }
+    }
+
+    pub fn with_reward(mut self, reward: RewardConfig) -> Self {
+        self.reward = reward;
+        self
+    }
+
+    /// Total reward so far this episode.
+    pub fn score(&self) -> f64 {
+        self.score
+    }
+
+    /// Reward from the latest `step` (0 once the episode has ended).
+    pub fn last_reward(&self) -> f64 {
+        self.last_reward
     }
 
     pub fn reset(&mut self, scenario: Scenario) {
@@ -65,6 +119,8 @@ impl CourseRun {
         self.steps = 0;
         self.next = 0;
         self.outcome = Outcome::InProgress;
+        self.score = 0.0;
+        self.last_reward = 0.0;
     }
 
     pub fn sim(&self) -> &Sim {
@@ -85,26 +141,41 @@ impl CourseRun {
 
     pub fn step(&mut self, controls: Controls) -> Outcome {
         if self.outcome != Outcome::InProgress {
+            self.last_reward = 0.0;
             return self.outcome;
         }
+        let before = self.sim.state();
         let out = self.sim.step(controls);
         let state = out.state;
         self.steps += 1;
+        let time = self.steps as f64 * self.dt;
+        let mut reward = -self.reward.time_penalty_per_s * self.dt;
         if out.status == Status::Capsized {
-            self.outcome = Outcome::Capsized {
-                time: self.steps as f64 * self.dt,
-            };
-            return self.outcome;
+            self.outcome = Outcome::Capsized { time };
+            reward -= self.reward.capsize_penalty;
+            return self.finish_step(reward);
         }
         let mark = self.course.marks[self.next];
-        if (mark.x - state.x).hypot(mark.y - state.y) <= self.course.mark_radius {
+        let dist_before = (mark.x - before.x).hypot(mark.y - before.y);
+        let dist_after = (mark.x - state.x).hypot(mark.y - state.y);
+        if dist_after <= self.course.mark_radius {
+            // Credit the rest of the leg, so progress adds up to the leg length.
+            reward += self.reward.progress_per_m * dist_before + self.reward.mark_bonus;
             self.next += 1;
             if self.next == self.course.marks.len() {
-                self.outcome = Outcome::Finished {
-                    time: self.steps as f64 * self.dt,
-                };
+                self.outcome = Outcome::Finished { time };
+                let speed = (1.0 - time / self.reward.finish_time_ref).max(0.0);
+                reward += self.reward.finish_bonus * speed;
             }
+        } else {
+            reward += self.reward.progress_per_m * (dist_before - dist_after);
         }
+        self.finish_step(reward)
+    }
+
+    fn finish_step(&mut self, reward: f64) -> Outcome {
+        self.last_reward = reward;
+        self.score += reward;
         self.outcome
     }
 

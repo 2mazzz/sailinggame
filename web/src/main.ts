@@ -5,6 +5,8 @@ import { color, css, font, motion, radius, stroke } from "./theme";
 // Wind speed in knots from the URL, e.g. ?wind=24 (default 12 kn).
 const WIND_KN = Number(new URLSearchParams(location.search).get("wind")) || 12;
 let windKn = WIND_KN;
+// The scripted baseline agent steers when on: press P, or open with ?auto=1.
+let autopilot = new URLSearchParams(location.search).has("auto");
 let windFromDeg = Number(new URLSearchParams(location.search).get("dir")) || 0; // wind blows from the north
 const PX_PER_M = 10;
 const RUDDER_RATE = 2.5; // per second while a key is held
@@ -26,6 +28,7 @@ const MAP_W = 190, MAP_H = 230, MAP_PAD = 14; // minimap box, top left
 const X = 0, Y = 1, HEADING = 2, HEEL = 3, SURGE = 4, SWAY = 5, AWA = 7, AWS = 8, CAPSIZED = 9, TIME = 10, TWS = 11, TWD = 12;
 
 const deg = (r: number) => (r * 180) / Math.PI;
+const fmtScore = (v: number) => String(Math.round(v) || 0); // no "-0"
 
 // Overshoot ease for the subtle pop-in of cards and banners.
 const easeOutBack = (t: number) => {
@@ -224,6 +227,7 @@ async function main() {
     keys.add(e.code);
     if (e.code === "KeyR") { game.reset(); trailPts.length = 0; }
     if (e.code === "KeyC") game.set_capsize_enabled(!game.capsize_enabled());
+    if (e.code === "KeyP") autopilot = !autopilot;
     if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault();
   });
   addEventListener("keyup", (e) => keys.delete(e.code));
@@ -236,18 +240,21 @@ async function main() {
 
   app.ticker.add((ticker) => {
     const dt = ticker.deltaMS / 1000;
+    const agent = autopilot ? game.baseline_controls() : null;
     const left = keys.has("ArrowLeft") || keys.has("KeyA");
     const right = keys.has("ArrowRight") || keys.has("KeyD");
     const steer = (right ? 1 : 0) - (left ? 1 : 0);
     if (steer !== 0) rudder += steer * RUDDER_RATE * dt;
     else rudder -= Math.sign(rudder) * Math.min(Math.abs(rudder), RUDDER_RETURN * dt);
     rudder = Math.max(-1, Math.min(1, rudder));
+    if (agent) rudder = agent[0];
     // Up/W trims the sheet in (towards 1); Down/S eases it out.
     if (keys.has("ArrowUp") || keys.has("KeyW")) sheet += SHEET_RATE * dt;
     if (keys.has("ArrowDown") || keys.has("KeyS")) sheet -= SHEET_RATE * dt;
     sheet = Math.max(0, Math.min(1, sheet));
+    if (agent) sheet = agent[1];
     // Hold Space or Shift to lean out; releasing sits the sailor back in.
-    const hiking = keys.has("Space") || keys.has("ShiftLeft") || keys.has("ShiftRight");
+    const hiking = agent ? agent[2] > 0.5 : keys.has("Space") || keys.has("ShiftLeft") || keys.has("ShiftRight");
     hike = Math.max(0, Math.min(1, hike + (hiking ? 1 : -1) * HIKE_RATE * dt));
 
     game.advance(dt, rudder, sheet, hike);
@@ -355,8 +362,8 @@ async function main() {
     }
 
     const finished = game.course_status() === 1;
-    finishBanner.set(`FINISHED  ${game.finish_time().toFixed(1)} s\nR to restart`);
-    capsizeBanner.set("CAPSIZED\nR to restart");
+    finishBanner.set(`FINISHED  ${game.finish_time().toFixed(1)} s\nscore ${fmtScore(game.score())}\nR to restart`);
+    capsizeBanner.set(`CAPSIZED\nscore ${fmtScore(game.score())}\nR to restart`);
     pop(finishBanner, finished, width / 2, height / 2 - 80);
     pop(capsizeBanner, s[CAPSIZED] === 1, width / 2, height / 2 - 80);
 
@@ -397,15 +404,15 @@ async function main() {
       ? `course   finished in ${game.finish_time().toFixed(1)} s`
       : `mark ${nextMark + 1}/${marks.length / 2}  bearing ${(((deg(markBearing) % 360) + 360) % 360).toFixed(0)} deg`;
     hud.set([
-      `time     ${(finished ? game.finish_time() : s[TIME]).toFixed(1)} s`,
+      `time     ${(finished ? game.finish_time() : s[TIME]).toFixed(1)} s   score ${fmtScore(game.score())}`,
       courseLine,
       `heading  ${((deg(s[HEADING]) % 360) + 360) % 360 | 0} deg   heel ${deg(s[HEEL]).toFixed(0)} deg`,
       `TWA      ${twa.toFixed(0)} deg   wind from ${(((s[TWD] % 360) + 360) % 360).toFixed(0)} (mean ${windFromDeg.toFixed(0)}, ${windKn.toFixed(0)} kn)`,
       `rudder   ${rudder.toFixed(2)}   sheet ${sheet.toFixed(2)}   hike ${hike.toFixed(2)}`,
-      `capsize  ${game.capsize_enabled() ? "on" : "off"}`,
+      `capsize  ${game.capsize_enabled() ? "on" : "off"}   autopilot ${autopilot ? "ON" : "off"}`,
       ``,
       `A/D or <-/->  rudder   W/S or up/down  sheet`,
-      `hold Space/Shift  hike   R reset   C capsize`,
+      `Space hike  R reset  C capsize  P autopilot`,
       `yellow line = apparent wind`,
     ].join("\n"));
   });
