@@ -16,7 +16,7 @@ import numpy as np
 from .env import OBS_LEN, SailEnv
 
 HIDDEN = 16
-ACTIONS = 2  # rudder, sheet
+ACTIONS = 3  # rudder, sheet, hike
 # Weights and biases of obs -> hidden -> actions, as one flat vector.
 PARAM_COUNT = OBS_LEN * HIDDEN + HIDDEN + HIDDEN * ACTIONS + ACTIONS
 RECORD_EVERY = 2  # keep every 2nd decision: 5 points a second
@@ -39,7 +39,7 @@ _env = None
 
 def _init_worker(time_limit):
     global _env
-    _env = SailEnv(time_limit=time_limit)
+    _env = SailEnv(time_limit=time_limit, hike=True)
 
 
 def _pack(info, out):
@@ -60,14 +60,29 @@ def _episode(params, record, policy=None):
         _pack(info, path)
     done = False
     step = 0
+    actions = []
     while not done:
         action = env.baseline_action() if policy == "baseline" else act(params, obs)
+        actions.append(action)
         obs, _, terminated, truncated, info = env.step(action)
         done = terminated or truncated
         step += 1
         if record and (step % RECORD_EVERY == 0 or done):
             _pack(info, path)
-    result = {"score": info["score"], "outcome": info["outcome"], "time": info["time"]}
+    a = np.array(actions)
+    sheet = (a[:, 1] + 1.0) / 2.0
+    result = {
+        "score": info["score"],
+        "outcome": info["outcome"],
+        "time": info["time"],
+        # How the control was used this episode, each 0 to 1: mean rudder
+        # deflection, how much of its range the sheet swept, mean hike lean.
+        "controls": {
+            "rudder": float(np.abs(a[:, 0]).mean()),
+            "sheet": float(sheet.max() - sheet.min()),
+            "hike": float(((a[:, 2] + 1.0) / 2.0).mean()),
+        },
+    }
     if record:
         result["p"] = path
     return result
@@ -84,6 +99,7 @@ def _baseline(_):
 
 def _stats(gen, results):
     scores = np.array([r["score"] for r in results])
+    top = max(results, key=lambda r: r["score"])
     finished = [r["time"] for r in results if r["outcome"] == "finished"]
     n = len(results)
     return {
@@ -94,6 +110,7 @@ def _stats(gen, results):
         "finish_rate": len(finished) / n,
         "capsize_rate": sum(r["outcome"] == "capsized" for r in results) / n,
         "mean_finish_time": float(np.mean(finished)) if finished else None,
+        "best_controls": top["controls"],
     }
 
 
@@ -112,7 +129,8 @@ def run(
     workers=None,
     seed=0,
     time_limit=150.0,
-    sigma=0.2,
+    sigma=0.3,
+    sigma_final=0.03,
     elite_fraction=0.1,
     parent_fraction=0.3,
     init_scale=0.5,
@@ -126,7 +144,7 @@ def run(
     checkpoints = checkpoint_gens(generations)
 
     pop = rng.normal(0.0, init_scale, size=(population, PARAM_COUNT))
-    probe = SailEnv(time_limit=time_limit)
+    probe = SailEnv(time_limit=time_limit, hike=True)
     course = probe.course
     log = {
         "config": {
@@ -134,6 +152,7 @@ def run(
             "generations": generations,
             "seed": seed,
             "sigma": sigma,
+            "sigma_final": sigma_final,
             "elite": elite,
             "time_limit": time_limit,
             "hidden": HIDDEN,
@@ -154,7 +173,7 @@ def run(
         evaluate, base = map, map
     try:
         baseline = list(base(_baseline, [0]))[0]
-        log["baseline"] = {k: baseline[k] for k in ("score", "time", "outcome")}
+        log["baseline"] = {k: baseline[k] for k in ("score", "time", "outcome", "controls")}
         for gen in range(generations):
             record = gen in checkpoints
             results = list(evaluate(_evaluate, [(p, record) for p in pop]))
@@ -168,10 +187,15 @@ def run(
                     json.dumps({"gen": gen, "dt": 0.1 * RECORD_EVERY, "boats": boats})
                 )
             (out / "training.json").write_text(json.dumps(log))
+            (out / "best.json").write_text(
+                json.dumps({"gen": gen, "score": results[order[0]]["score"], "params": pop[order[0]].tolist()})
+            )
             # Next generation: keep the elite, fill the rest with mutated good boats.
             ranked = pop[order]
             children = ranked[rng.integers(0, parents, size=population - elite)]
-            children = children + rng.normal(0.0, sigma, size=children.shape)
+            # Wide steps early to explore, small ones late to polish.
+            step = sigma + (sigma_final - sigma) * gen / max(1, generations - 1)
+            children = children + rng.normal(0.0, step, size=children.shape)
             pop = np.vstack([ranked[:elite], children])
     finally:
         if pool:
@@ -189,11 +213,13 @@ def main():
     p.add_argument("--generations", type=int, default=60)
     p.add_argument("--workers", type=int, default=None)
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--sigma", type=float, default=0.2)
+    p.add_argument("--sigma", type=float, default=0.3)
+    p.add_argument("--sigma-final", type=float, default=0.03)
     p.add_argument("--time-limit", type=float, default=150.0)
     args = p.parse_args()
     log = run(
-        args.out, args.population, args.generations, args.workers, args.seed, args.time_limit, args.sigma
+        args.out, args.population, args.generations, args.workers, args.seed, args.time_limit, args.sigma,
+        args.sigma_final,
     )
     g = log["generations"][-1]
     print(f"gen {g['gen']}: best {g['best']:.0f}, finish rate {g['finish_rate']:.0%}")

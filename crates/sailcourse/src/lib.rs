@@ -93,9 +93,9 @@ impl Default for RewardConfig {
         Self {
             progress_per_m: 1.0,
             mark_bonus: 50.0,
-            finish_bonus: 300.0,
-            finish_time_ref: 300.0,
-            time_penalty_per_s: 0.2,
+            finish_bonus: 600.0,
+            finish_time_ref: 150.0,
+            time_penalty_per_s: 0.3,
             capsize_penalty: 100.0,
         }
     }

@@ -21,7 +21,7 @@ env -u CONDA_PREFIX VIRTUAL_ENV=$PWD/.venv PATH=$PWD/.venv/bin:$PATH \
 ## Evolution
 
 ```sh
-.venv/bin/python -m sailing.evolve --out web/public/runs/figure8-1 --generations 100 --population 100
+.venv/bin/python -m sailing.evolve --out web/public/runs/figure8-4 --generations 100 --population 100
 ```
 
 Each generation 100 small networks sail the course once; the best 10 % carry over unchanged and the rest are mutated copies of the best 30 %. About 25 s for 100 generations on 8 cores. It writes `training.json` (per-generation best, mean, median, finish and capsize rates, mean finish time, the course, and the scripted baseline for reference) and a `gen_NNNN.json` replay of all boats for checkpoint generations. `web/public/runs/` is not committed; the viewer's Training page reads it.

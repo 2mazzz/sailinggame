@@ -40,8 +40,8 @@ Not tested: mark radius edge exactly on the boundary, anything inside `sailsim`.
 
 - Progress: `progress_per_m` (1.0) per metre gained towards the next mark, negative when losing ground. Reaching a mark credits the rest of the leg, so a leg adds up to its length.
 - `mark_bonus` (50) for each mark reached in order.
-- `finish_bonus` (300) at the finish, scaled down linearly to 0 as the time reaches `finish_time_ref` (300 s). This is where speed pays most.
-- `time_penalty_per_s` (0.2) every second in progress, so speed also pays along the way.
+- `finish_bonus` (600) at the finish, scaled down linearly to 0 as the time reaches `finish_time_ref` (150 s), so each second saved is worth 4 points. This is where speed pays most.
+- `time_penalty_per_s` (0.3) every second in progress, so speed also pays along the way.
 - `capsize_penalty` (100) once, when the boat capsizes before the last mark. A capsized or finished episode scores nothing further.
 
 ## Baseline agent

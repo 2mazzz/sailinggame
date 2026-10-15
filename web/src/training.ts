@@ -7,7 +7,7 @@ import { color, css, font, radius, stroke } from "./theme";
 // come from `python -m sailing.evolve` (web/public/runs/<run>/).
 
 const PARAMS = new URLSearchParams(location.search);
-const RUN = PARAMS.get("run") ?? "figure8-1";
+const RUN = PARAMS.get("run") ?? "figure8-4";
 // ?gen=N picks the nearest checkpoint, ?t=S freezes the replay at S seconds (for screenshots and links).
 const START_GEN = PARAMS.has("gen") ? Number(PARAMS.get("gen")) : 0;
 const FREEZE_T = PARAMS.has("t") ? Number(PARAMS.get("t")) : null;
@@ -18,6 +18,7 @@ const HOLD_S = 2; // pause on the final frame before looping
 interface GenStat {
   gen: number; best: number; mean: number; median: number;
   finish_rate: number; capsize_rate: number; mean_finish_time: number | null;
+  best_controls: { rudder: number; sheet: number; hike: number };
 }
 interface Log {
   config: { population: number; generations: number; wind_speed: number; wind_dir: number; sigma: number; elite: number };
@@ -178,6 +179,16 @@ async function main() {
       series: [
         { name: "finished", values: gens.map((g) => g.finish_rate * 100), color: color.ink, width: 3 },
         { name: "capsized", values: gens.map((g) => g.capsize_rate * 100), color: color.heel, width: 2.5 },
+      ],
+      yMin: 0, yMax: 100, unit: "%",
+      checkpoints: log.checkpoints, onPick: (g) => pickGeneration(g),
+    }),
+    lineChart({
+      title: "Controls the best boat uses",
+      series: [
+        { name: "rudder", values: gens.map((g) => g.best_controls.rudder * 100), color: color.ink, width: 2.5 },
+        { name: "sheet range", values: gens.map((g) => g.best_controls.sheet * 100), color: 0x2a8f84, width: 2.5 },
+        { name: "hike", values: gens.map((g) => g.best_controls.hike * 100), color: 0x8a8794, width: 2.5 },
       ],
       yMin: 0, yMax: 100, unit: "%",
       checkpoints: log.checkpoints, onPick: (g) => pickGeneration(g),

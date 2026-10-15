@@ -10,7 +10,7 @@ def test_a_policy_maps_observations_to_actions_in_range_deterministically():
     params = rng.normal(size=evolve.PARAM_COUNT)
     obs = rng.uniform(-1, 1, size=evolve.OBS_LEN)
     a = evolve.act(params, obs)
-    assert a.shape == (2,) and np.all(np.abs(a) <= 1.0)
+    assert a.shape == (3,) and np.all(np.abs(a) <= 1.0)  # rudder, sheet, hike
     assert np.array_equal(a, evolve.act(params, obs))
 
 
@@ -22,6 +22,9 @@ def test_a_run_logs_each_generation_and_records_replays(tmp_path):
     g = log["generations"][0]
     for key in ("gen", "best", "mean", "median", "finish_rate", "capsize_rate", "mean_finish_time"):
         assert key in g
+    # How the best boat used each control: rudder activity, sheet range and hike lean, all 0 to 1.
+    for key in ("rudder", "sheet", "hike"):
+        assert 0.0 <= g["best_controls"][key] <= 1.0
     assert log["course"]["radius"] == 6.0 and len(log["course"]["marks"]) == 8
     assert log["baseline"]["outcome"] in {"finished", "capsized", "time_limit"}
     # Elitism: the best score never goes down.

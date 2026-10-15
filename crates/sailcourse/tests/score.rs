@@ -143,3 +143,13 @@ fn reset_clears_the_score() {
     assert_eq!(run.score(), 0.0);
     assert_eq!(run.last_reward(), 0.0);
 }
+
+#[test]
+fn the_default_reward_pays_clearly_for_a_faster_finish() {
+    let cfg = RewardConfig::default();
+    let bonus = |t: f64| cfg.finish_bonus * (1.0 - t / cfg.finish_time_ref).max(0.0);
+    // Ten seconds quicker is worth at least 30 points, so speed shows up in the score.
+    assert!(bonus(60.0) - bonus(70.0) >= 30.0, "{} vs {}", bonus(60.0), bonus(70.0));
+    // And a slow finish still beats not finishing.
+    assert!(bonus(100.0) > 0.0);
+}
