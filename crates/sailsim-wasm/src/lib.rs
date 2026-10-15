@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 const SNAPSHOT_LEN: usize = 13;
 
 /// Gust strength (fraction of the mean wind) the viewer starts with.
-const DEFAULT_GUST_INTENSITY: f64 = 0.3;
+const DEFAULT_GUST_INTENSITY: f64 = 0.0;
 /// Wind shift range (degrees either side of the mean) the viewer starts with.
 const DEFAULT_SHIFT_DEG: f64 = 10.0;
 

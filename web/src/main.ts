@@ -112,10 +112,8 @@ async function main() {
   hud.box.position.set(12, 12);
   app.stage.addChild(hud.box);
 
-  // Wind gauge (top right): yellow dial with an ink arrow pointing where the wind blows to.
+  // Wind gauge (top right, drawn straight on the water): yellow dial with an ink arrow pointing where the wind blows to.
   const windGauge = new Container();
-  const windCardBg = new Graphics().roundRect(0, 0, GAUGE_W, 66, radius.card)
-    .fill(color.card).stroke({ width: stroke.outline, color: color.ink });
   const windDial = new Graphics().circle(0, 0, 23).fill(color.signal).stroke({ width: stroke.outline, color: color.ink });
   windDial.position.set(36, 33);
   const windPointer = new Graphics().poly([0, -15, 8, 9, 0, 4, -8, 9]).fill(color.ink);
@@ -124,19 +122,17 @@ async function main() {
   windValue.position.set(70, 10);
   const windLabel = new Text({ text: "wind kn", style: monoStyle(11) });
   windLabel.position.set(70, 38);
-  windGauge.addChild(windCardBg, windDial, windPointer, windValue, windLabel);
+  windGauge.addChild(windDial, windPointer, windValue, windLabel);
 
   // Speed gauge: a half dial that fills with yellow.
   const speedGauge = new Container();
-  const speedCardBg = new Graphics().roundRect(0, 0, GAUGE_W, 56, radius.card)
-    .fill(color.card).stroke({ width: stroke.outline, color: color.ink });
   const speedArc = new Graphics();
   speedArc.position.set(36, 42);
   const speedValue = new Text({ text: "", style: { ...displayStyle(22), align: "left" } });
   speedValue.position.set(70, 6);
   const speedLabel = new Text({ text: "boat kn", style: monoStyle(11) });
   speedLabel.position.set(70, 34);
-  speedGauge.addChild(speedCardBg, speedArc, speedValue, speedLabel);
+  speedGauge.addChild(speedArc, speedValue, speedLabel);
   app.stage.addChild(windGauge, speedGauge);
 
   // Banners pop in with a short overshoot; heel red is reserved for capsize.

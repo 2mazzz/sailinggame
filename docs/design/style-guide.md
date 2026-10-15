@@ -42,7 +42,7 @@ Rules:
 - Boat: flat minimal icon, rounded hull, thin boom line, small flat sailor. Outline 0.06 m ink.
 - Arrow to the next mark: small, thin, rounded chevron orbiting the boat; subtle, not a solid arrow.
 - Cards: 16 px radius, 2.5 px ink outline, no shadow.
-- Gauges: circular or semicircular, filled with `signal`, outlined in ink.
+- Gauges: circular or semicircular, filled with `signal`, outlined in ink. They sit directly on the water, not in a card.
 
 ## Motion
 
