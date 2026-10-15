@@ -106,7 +106,7 @@ fn capsizing_ends_the_episode_with_its_own_outcome() {
     });
     let controls = Controls {
         rudder: 0.0,
-        sheet: 0.85,
+        sheet: 1.0,
     };
     let Outcome::Capsized { time } = sail(&mut run, controls, 60.0) else {
         panic!("expected capsize, got {:?}", run.outcome());

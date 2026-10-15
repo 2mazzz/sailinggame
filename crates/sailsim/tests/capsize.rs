@@ -16,7 +16,7 @@ fn gale_close_hauled(config: SimConfig, start_heel_deg: f64) -> Sim {
 
 const SHEETED_IN: Controls = Controls {
     rudder: 0.0,
-    sheet: 0.85,
+    sheet: 1.0,
 };
 
 fn run(

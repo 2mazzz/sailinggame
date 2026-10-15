@@ -22,6 +22,7 @@ pub struct BoatParams {
     /// Sail area (m^2).
     pub sail_area: f64,
     /// Boom angle from the centreline when the sheet is fully eased / fully in (rad).
+    /// The fully-in angle is a tuned value, no source (ticket 4): it keeps the no-go zone firm.
     pub boom_angle_eased: f64,
     pub boom_angle_in: f64,
     pub sail: FoilParams,
@@ -81,7 +82,7 @@ impl BoatParams {
             resistance_quadratic: 6.5,
             sail_area: 7.0,
             boom_angle_eased: 90.0_f64.to_radians(),
-            boom_angle_in: 5.0_f64.to_radians(),
+            boom_angle_in: 18.0_f64.to_radians(),
             sway_mass: 250.0,
             board: FoilParams {
                 lift_slope: 3.1,

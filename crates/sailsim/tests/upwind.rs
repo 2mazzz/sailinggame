@@ -96,3 +96,13 @@ fn best_upwind_angle_is_between_35_and_55_degrees() {
         angles.iter().zip(&vmgs).collect::<Vec<_>>()
     );
 }
+
+/// The no-go zone is firm: pinned at 30 degrees to the wind, even trimmed as
+/// well as a sailor can, the boat cannot keep driving, whichever tack.
+#[test]
+fn held_at_30_degrees_to_the_wind_the_boat_cannot_keep_driving() {
+    for twa in [30.0, -30.0] {
+        let surge = best_trim(twa, 20).final_state.surge;
+        assert!(surge <= 1.5, "tack {twa}: sustains {surge} m/s at 30 deg");
+    }
+}
