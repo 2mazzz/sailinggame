@@ -41,6 +41,11 @@ pub struct BoatParams {
     /// angle at full deflection (rad).
     pub rudder_arm: f64,
     pub rudder_max_angle: f64,
+    /// Sculling moment (N m) at full rudder, peaking at about `rudder_scull_speed`
+    /// (m/s) of surge: the extra turning a sailor gets by working the tiller
+    /// when the blade alone is too slow to bite.
+    pub rudder_scull_moment: f64,
+    pub rudder_scull_speed: f64,
     /// Mass that the righting moment acts on: hull + crew (kg).
     pub displacement_mass: f64,
     /// Peak righting arm GZ (m), with the crew hiking.
@@ -113,6 +118,8 @@ impl BoatParams {
             rudder_area: 0.09,
             rudder_arm: 1.7,
             rudder_max_angle: 35.0_f64.to_radians(),
+            rudder_scull_moment: 200.0,
+            rudder_scull_speed: 0.5,
             sail: FoilParams {
                 lift_slope: 4.5,
                 stall_angle: 0.35,

@@ -111,6 +111,13 @@ impl Sim {
         self.wind_dir = dir;
     }
 
+    /// Change gust and shift strength while running; the boat and the
+    /// seeded wind processes carry on untouched.
+    pub fn set_wind_variability(&mut self, gust_intensity: f64, shift_intensity: f64) {
+        self.config.gust_intensity = gust_intensity;
+        self.config.shift_intensity = shift_intensity;
+    }
+
     /// Live true wind direction (rad, where it blows from), including the current shift.
     pub fn wind_dir(&self) -> f64 {
         self.wind_dir + self.config.shift_intensity * self.shifts.value()

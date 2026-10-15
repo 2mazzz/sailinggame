@@ -61,5 +61,10 @@ pub fn rudder_force(
     let lateral = -alpha.signum() * cl * q_s;
     let drag = -surge.signum() * cd * q_s;
     // The rudder sits aft of the centre of gravity: moment = x * F_starboard.
-    (drag, lateral, -params.rudder_arm * lateral)
+    // Sculling: at low speed the blade barely bites, so the sailor works the
+    // tiller to turn the boat. Zero at rest, peaking near `rudder_scull_speed`.
+    let x = surge.abs() / params.rudder_scull_speed;
+    let scull =
+        params.rudder_scull_moment * rudder.clamp(-1.0, 1.0) * surge.signum() * x / (1.0 + x * x);
+    (drag, lateral, -params.rudder_arm * lateral + scull)
 }
