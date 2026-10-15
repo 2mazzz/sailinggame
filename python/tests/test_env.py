@@ -87,3 +87,14 @@ def test_observation_matches_its_declared_space():
     env = SailEnv()
     obs, _ = env.reset(seed=0)
     assert env.observation_space.contains(obs)
+
+
+def test_the_baseline_action_finishes_the_course_and_the_course_is_exposed():
+    env = SailEnv(time_limit=200.0)
+    obs, info = env.reset(seed=0)
+    assert len(env.course["marks"]) == 5 and env.course["radius"] == 6.0
+    terminated = truncated = False
+    while not (terminated or truncated):
+        obs, _, terminated, truncated, info = env.step(env.baseline_action())
+    assert info["outcome"] == "finished"
+    assert info["score"] > 400

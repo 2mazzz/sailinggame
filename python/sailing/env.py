@@ -43,6 +43,17 @@ class SailEnv(gym.Env):
         self.action_space = spaces.Box(-1.0, 1.0, shape=(3 if hike else 2,), dtype=np.float32)
         self.observation_space = spaces.Box(-3.0, 3.0, shape=(OBS_LEN,), dtype=np.float32)
 
+    @property
+    def course(self):
+        flat, radius = self._core.course()
+        return {"marks": [(flat[i], flat[i + 1]) for i in range(0, len(flat), 2)], "radius": radius}
+
+    def baseline_action(self):
+        """The scripted baseline agent's action now, in this env's action space."""
+        rudder, sheet, hike = self._core.baseline_controls()
+        action = [rudder, 2.0 * sheet - 1.0] + ([2.0 * hike - 1.0] if self._hike else [])
+        return np.asarray(action, dtype=np.float32)
+
     def _info(self):
         x, y, heading, heel, t, score, next_mark = self._core.state()
         return {
