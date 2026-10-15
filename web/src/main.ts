@@ -17,6 +17,9 @@ const SPEED_GAUGE_MAX_KN = 8;
 const ARROW_ORBIT_PX = 76; // radius of the next-mark arrow around the boat
 const HEEL_RING_PX = 56;
 const GAUGE_W = 156;
+const HUD_CHARS = 52; // widest HUD line, so the info card never changes size
+const HUD_LINES = 10;
+const MAP_W = 190, MAP_H = 230, MAP_PAD = 14; // minimap box, top left
 
 // Snapshot field indices (see sailsim-wasm).
 const X = 0, Y = 1, HEADING = 2, HEEL = 3, SURGE = 4, SWAY = 5, AWA = 7, AWS = 8, CAPSIZED = 9, TIME = 10, TWS = 11, TWD = 12;
@@ -36,21 +39,31 @@ const displayStyle = (size: number, fill: number = color.ink): TextStyleOptions 
   fill, fontFamily: font.display, fontSize: size, fontWeight: "600", align: "center",
 });
 
-/** A cream card with an ink outline: Graphics background plus a Text, resized to fit. */
-function makeCard(style: TextStyleOptions, pad = 12) {
+/**
+ * A cream card with an ink outline: Graphics background plus a Text. It sizes to
+ * the text, or to `sample` when given, so a card of changing numbers keeps one size.
+ */
+function makeCard(style: TextStyleOptions, pad = 12, sample?: string) {
   const box = new Container();
   const bg = new Graphics();
   const text = new Text({ text: "", style });
   text.position.set(pad, pad - 2);
   box.addChild(bg, text);
+  const draw = (w: number, h: number) =>
+    bg.clear().roundRect(0, 0, w + pad * 2, h + pad * 2 - 4, radius.card)
+      .fill(color.card).stroke({ width: stroke.outline, color: color.ink });
+  if (sample) {
+    const probe = new Text({ text: sample, style });
+    draw(probe.width, probe.height);
+    probe.destroy();
+  }
   return {
     box,
     text,
     set(t: string) {
       if (text.text === t) return;
       text.text = t;
-      bg.clear().roundRect(0, 0, text.width + pad * 2, text.height + pad * 2 - 4, radius.card)
-        .fill(color.card).stroke({ width: stroke.outline, color: color.ink });
+      if (!sample) draw(text.width, text.height);
     },
   };
 }
@@ -121,9 +134,22 @@ async function main() {
   app.stage.addChild(heelRing, nextArrow, distLabel.box);
 
   // HUD card, top left: plain text for everything that is not a gauge.
-  const hud = makeCard(monoStyle(13));
-  hud.box.position.set(12, 12);
+  const hud = makeCard(monoStyle(13), 12, Array(HUD_LINES).fill("M".repeat(HUD_CHARS)).join("\n"));
   app.stage.addChild(hud.box);
+
+  // Minimap (top left, no background): the whole course, the next mark and the boat.
+  const course = Array.from(game.course_marks());
+  const mapPts: number[] = [0, 0, ...course]; // start first, then every mark
+  const xs = mapPts.filter((_, i) => i % 2 === 0), ys = mapPts.filter((_, i) => i % 2 === 1);
+  const mapMinX = Math.min(...xs), mapMaxX = Math.max(...xs), mapMinY = Math.min(...ys), mapMaxY = Math.max(...ys);
+  const mapScale = Math.min((MAP_W - 2 * MAP_PAD) / Math.max(1, mapMaxX - mapMinX), (MAP_H - 2 * MAP_PAD) / Math.max(1, mapMaxY - mapMinY));
+  const mapX = (x: number) => MAP_PAD + (x - mapMinX) * mapScale;
+  const mapY = (y: number) => MAP_PAD + (mapMaxY - y) * mapScale; // north is up
+  const miniMap = new Graphics();
+  miniMap.position.set(12, 12);
+  const mapBoat = new Graphics().poly([0, -7, 5, 6, 0, 3, -5, 6]).fill(color.hull).stroke({ width: 2, color: color.ink, join: "round" });
+  miniMap.addChild(mapBoat);
+  app.stage.addChild(miniMap);
 
   // Wind gauge (top right, drawn straight on the water): yellow dial with an ink arrow pointing where the wind blows to.
   const windGauge = new Container();
@@ -343,6 +369,27 @@ async function main() {
     speedArc.clear()
       .arc(0, 0, 24, Math.PI, Math.PI * 2).stroke({ width: 9, color: color.ink, alpha: 0.18, cap: "round" })
       .arc(0, 0, 24, Math.PI, Math.PI + Math.PI * Math.min(1, kn / SPEED_GAUGE_MAX_KN)).stroke({ width: 9, color: color.signal, cap: "round" });
+
+    // Info card, bottom left.
+    hud.box.position.set(12, height - hud.box.height - 12);
+
+    // Minimap: course line, marks (next one bigger), boat clamped inside the box.
+    miniMap.clear();
+    miniMap.moveTo(mapX(0), mapY(0));
+    for (let i = 0; i < course.length; i += 2) miniMap.lineTo(mapX(course[i]), mapY(course[i + 1]));
+    miniMap.stroke({ width: 2, color: color.hull, alpha: 0.55, cap: "round", join: "round" });
+    for (let i = 0; i < course.length / 2; i++) {
+      const done = nextMark < 0 || i < nextMark;
+      const r = i === nextMark ? 6 : 4;
+      miniMap.circle(mapX(course[2 * i]), mapY(course[2 * i + 1]), r).fill({ color: color.mark, alpha: done ? 0.5 : 1 })
+        .stroke({ width: 2, color: color.ink, alpha: done ? 0.5 : 1 });
+    }
+    mapBoat.position.set(
+      Math.min(MAP_W, Math.max(0, mapX(s[X]))),
+      Math.min(MAP_H, Math.max(0, mapY(s[Y]))),
+    );
+    mapBoat.rotation = s[HEADING];
+    miniMap.addChild(mapBoat); // keep the boat drawn on top after clear()
 
     const twa = Math.abs(((deg(s[HEADING]) - s[TWD] + 540) % 360) - 180);
     const courseLine = nextMark < 0

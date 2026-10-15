@@ -44,6 +44,13 @@ Rules:
 - Cards: 16 px radius, 2.5 px ink outline, no shadow.
 - Gauges: circular or semicircular, filled with `signal`, outlined in ink. They sit directly on the water, not in a card.
 
+## Layout
+
+- Top left: minimap, no background. White course line, white marks with ink outline (the next one larger), boat as a small white arrow.
+- Top right: wind and speed gauges, on the water.
+- Bottom left: the info card, always the same size (sized from its widest possible line), all text inside it.
+- Bottom right: settings sliders on a card.
+
 ## Motion
 
 Subtle. Cards and banners enter in about 180 ms with a small overshoot. No motion delays reading a value. Respect `prefers-reduced-motion` in the HTML overlay.

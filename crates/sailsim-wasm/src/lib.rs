@@ -16,9 +16,16 @@ const DEFAULT_SHIFT_DEG: f64 = 10.0;
 /// A mark is reached within this many metres.
 const MARK_RADIUS: f64 = 10.0;
 
-/// Default course (x, y pairs, metres; x east, y north): upwind first for the
-/// default northerly wind, then a reach and a run back past the start.
-const DEFAULT_MARKS: [(f64, f64); 4] = [(0.0, 120.0), (90.0, 70.0), (90.0, -40.0), (0.0, -40.0)];
+/// Default course (x, y pairs, metres; x east, y north): a reverse C that
+/// starts at the top. East along the top, south down the back, west along the
+/// bottom, so for a northerly wind it is a beam reach, a run, then a beam reach.
+const DEFAULT_MARKS: [(f64, f64); 5] = [
+    (90.0, 0.0),
+    (140.0, -45.0),
+    (140.0, -135.0),
+    (90.0, -180.0),
+    (0.0, -180.0),
+];
 
 fn default_course() -> Course {
     Course {
