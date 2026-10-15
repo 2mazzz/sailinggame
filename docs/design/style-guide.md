@@ -39,7 +39,7 @@ Rules:
 
 ## Shapes
 
-- Boat: flat minimal icon, rounded hull, thin boom line, small flat sailor. Outline 0.06 m ink.
+- Boat ("toy dinghy"): smooth white hull with a cream deck inset, a puffy white sail that bellies to leeward, flat ink sailor on the windward side. Ink outlines 0.06 to 0.1 m. Drawn at 18 px per metre.
 - Arrow to the next mark: small, thin, rounded chevron orbiting the boat; subtle, not a solid arrow.
 - Cards: 16 px radius, 2.5 px ink outline, no shadow.
 - Gauges: circular or semicircular, filled with `signal`, outlined in ink. They sit directly on the water, not in a card.

@@ -6,7 +6,7 @@ import { color, css, font, motion, radius, stroke } from "./theme";
 const WIND_KN = Number(new URLSearchParams(location.search).get("wind")) || 12;
 let windKn = WIND_KN;
 let windFromDeg = Number(new URLSearchParams(location.search).get("dir")) || 0; // wind blows from the north
-const PX_PER_M = 14;
+const PX_PER_M = 18;
 const RUDDER_RATE = 2.5; // per second while a key is held
 const RUDDER_RETURN = 4.0; // per second back to centre when released
 const SHEET_RATE = 0.5;
@@ -14,8 +14,8 @@ const HIKE_RATE = 2.0; // per second: the sailor takes about half a second to le
 const KN = 1.943844;
 const CAPSIZE_HEEL = (70 * Math.PI) / 180; // matches BoatParams::capsize_heel
 const SPEED_GAUGE_MAX_KN = 8;
-const ARROW_ORBIT_PX = 62; // radius of the next-mark arrow around the boat
-const HEEL_RING_PX = 44;
+const ARROW_ORBIT_PX = 76; // radius of the next-mark arrow around the boat
+const HEEL_RING_PX = 56;
 const GAUGE_W = 156;
 
 // Snapshot field indices (see sailsim-wasm).
@@ -71,19 +71,32 @@ async function main() {
   const world = new Container();
   const water = new Graphics();
   const boat = new Container();
+  // Toy dinghy: smooth white hull with a cream deck inset, a puffy sail and a flat sailor.
   const hull = new Graphics()
-    .poly([0, -2.1, 0.7, -0.6, 0.65, 1.8, -0.65, 1.8, -0.7, -0.6])
-    .fill(color.hull).stroke({ width: 0.09, color: color.ink, join: "round" });
+    .moveTo(0, -2.1)
+    .bezierCurveTo(0.55, -1.2, 0.75, -0.2, 0.68, 1.2)
+    .quadraticCurveTo(0.66, 1.8, 0.4, 1.8)
+    .lineTo(-0.4, 1.8)
+    .quadraticCurveTo(-0.66, 1.8, -0.68, 1.2)
+    .bezierCurveTo(-0.75, -0.2, -0.55, -1.2, 0, -2.1)
+    .closePath()
+    .fill(color.hull).stroke({ width: 0.1, color: color.ink, join: "round" })
+    .moveTo(0, -1.5)
+    .bezierCurveTo(0.38, -0.9, 0.5, -0.1, 0.46, 1.1)
+    .quadraticCurveTo(0.45, 1.45, 0.28, 1.45)
+    .lineTo(-0.28, 1.45)
+    .quadraticCurveTo(-0.45, 1.45, -0.46, 1.1)
+    .bezierCurveTo(-0.5, -0.1, -0.38, -0.9, 0, -1.5)
+    .closePath()
+    .fill(color.card).stroke({ width: 0.06, color: color.ink, join: "round" });
   const sailPivot = new Container();
   sailPivot.y = -0.5;
-  const sail = new Graphics()
-    .moveTo(0, 0).lineTo(0, 2.1).stroke({ width: 0.22, color: color.ink, cap: "round" })
-    .moveTo(0, 0).lineTo(0, 2.1).stroke({ width: 0.11, color: color.card, cap: "round" });
+  const sail = new Graphics();
   sailPivot.addChild(sail);
   const rudderGfx = new Graphics();
   rudderGfx.y = 1.8;
   const sailor = new Graphics();
-  boat.addChild(hull, sailPivot, rudderGfx, sailor);
+  boat.addChild(hull, rudderGfx, sailor, sailPivot);
   boat.scale.set(PX_PER_M);
   const trail = new Graphics();
   world.addChild(water, trail, boat);
@@ -254,6 +267,10 @@ async function main() {
     const boom = ((90 - 85 * sheet) * Math.PI) / 180;
     const awa = s[AWA]; // positive: wind from starboard, so the boom goes to port
     sailAngle = awa >= 0 ? boom : -boom;
+    // The sail bellies to leeward, the side the boom is on.
+    const belly = awa >= 0 ? -0.85 : 0.85;
+    sail.clear().moveTo(0, 0).quadraticCurveTo(belly, 1.05, 0, 2.1).quadraticCurveTo(belly * 0.1, 1.05, 0, 0).closePath()
+      .fill(color.hull).stroke({ width: 0.09, color: color.ink, join: "round" });
     sailPivot.rotation = sailAngle; // the sail is drawn aft of the mast, so 0 lies along the centreline
     // Visual heel: squash the beam.
     boat.scale.x = PX_PER_M * Math.cos(s[HEEL]);
@@ -261,8 +278,8 @@ async function main() {
     // past the gunwale as `hike` rises.
     const windward = awa >= 0 ? 1 : -1;
     const sx = windward * (0.45 + 0.75 * hike);
-    sailor.clear().moveTo(windward * 0.3, 0.6).lineTo(sx, 0.6)
-      .stroke({ width: 0.3, color: color.ink, cap: "round" })
+    sailor.clear().moveTo(windward * 0.35, 0.6).lineTo(sx, 0.6)
+      .stroke({ width: 0.34, color: color.ink, cap: "round" })
       .circle(sx + windward * 0.1, 0.6, 0.2).fill(color.hull).stroke({ width: 0.07, color: color.ink });
     rudderGfx.clear().moveTo(0, 0).lineTo(Math.sin(rudder * 0.6) * 0.5, Math.cos(rudder * 0.6) * 0.5)
       .stroke({ width: 0.12, color: color.ink, cap: "round" });
