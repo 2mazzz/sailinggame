@@ -61,6 +61,15 @@ const GUST_TIME_CONSTANT: f64 = 5.0;
 const SHIFT_TIME_CONSTANT: f64 = 30.0;
 const SHIFT_SEED_SALT: u64 = 0xA5A5_5A5A_1234_8765;
 
+/// Fraction of the sail force kept once depowered, for a raw heeling moment
+/// `moment` (N m): 1 while it is small, easing toward `depower_floor` as it
+/// grows past `depower_moment`.
+fn depower(params: &BoatParams, moment: f64) -> f64 {
+    let ratio = moment.abs() / params.depower_moment;
+    let eased = (1.0 + ratio.powi(4)).powf(-0.25);
+    params.depower_floor + (1.0 - params.depower_floor) * eased
+}
+
 pub struct Sim {
     config: SimConfig,
     params: BoatParams,
@@ -191,7 +200,7 @@ impl Sim {
             let wind = apparent_wind(wind_speed, wind_dir, heading, surge, sway);
             // A heeled sail presents less area to the wind.
             let (sail_surge, sail_sway) = sail_force(&params, &wind, sheet);
-            let power = heel.cos().max(0.0);
+            let power = heel.cos().max(0.0) * depower(&params, sail_sway * params.sail_heel_arm);
             let (sail_surge, sail_sway) = (sail_surge * power, sail_sway * power);
             let (board_surge, board_sway) = board_force(&params, surge, sway);
             let (rudder_surge, rudder_sway, rudder_yaw) =

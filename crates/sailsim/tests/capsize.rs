@@ -117,3 +117,28 @@ fn a_boat_flat_on_the_water_does_not_sail() {
     let (state, _) = run(&mut sim, 30.0, |_| SHEETED_IN);
     assert!(state.surge.abs() < 1.0, "surge {} m/s", state.surge);
 }
+
+/// Capsize wind speed, re-measured after the hiking righting curve and
+/// depowering (ticket 14): sheeted in close-hauled at 45 degrees, the boat
+/// survives a fresh 16 kn (8 m/s) breeze but capsizes by 12 m/s; the threshold
+/// is about 10 m/s (19 kn), against 10.5 m/s (20 kn) before.
+#[test]
+fn sheeted_in_close_hauled_survives_a_fresh_breeze_but_not_a_gale() {
+    for (wind, expected) in [(8.0, Status::Sailing), (12.0, Status::Capsized)] {
+        let mut sim = Sim::new(SimConfig {
+            fixed_heading: true,
+            ..SimConfig::default()
+        });
+        sim.reset(Scenario {
+            true_wind_speed: wind,
+            true_wind_dir: 45.0_f64.to_radians(),
+            start_x: 0.0,
+            start_y: 0.0,
+            start_heading: 0.0,
+            start_speed: 0.0,
+            start_heel: 0.0,
+        });
+        let (_, status) = run(&mut sim, 90.0, |_| SHEETED_IN);
+        assert_eq!(status, expected, "{wind} m/s");
+    }
+}

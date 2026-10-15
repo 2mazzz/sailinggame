@@ -9,6 +9,7 @@ mod sim;
 mod stability;
 mod state;
 
+pub use hydro::hull_resistance;
 pub use observation::Observation;
 pub use params::{BoatParams, FoilParams};
 pub use sim::{Scenario, Sim, SimConfig, StepOutput};

@@ -5,9 +5,14 @@ use crate::params::FoilParams;
 /// the foil stalls.
 pub fn coefficients(foil: &FoilParams, alpha: f64) -> (f64, f64) {
     let x = alpha / foil.stall_angle;
-    let stalled = x * x / (1.0 + x * x);
+    let xn = x.powi(foil.stall_sharpness);
+    let stalled = xn / (1.0 + xn);
 
-    let cl_attached = foil.lift_slope * alpha;
+    let linear = foil.lift_slope * alpha;
+    let cl_attached = match foil.max_lift {
+        Some(limit) => linear / (1.0 + (linear / limit).powi(8)).powf(0.125),
+        None => linear,
+    };
     let cl_plate = foil.plate_normal * alpha.sin() * alpha.cos();
     let cl = (1.0 - stalled) * cl_attached + stalled * cl_plate;
 

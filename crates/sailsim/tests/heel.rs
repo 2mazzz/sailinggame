@@ -38,7 +38,9 @@ fn heel_grows_with_wind_and_leans_away_from_it() {
     let fresh = close_hauled_heel(7.0, 0.85, 40.0);
 
     // Wind from starboard presses the sail to port: port side down (negative).
-    assert!(light < -2.0, "light-air heel {light} deg");
+    // A hiking crew keeps the boat nearly flat in light air (Day 2017: "sailed
+    // flat upwind up to about 9 knots"), so the heel is small but never zero.
+    assert!(light < -0.1, "light-air heel {light} deg");
     assert!(
         fresh < light,
         "heel should grow with wind: {light} -> {fresh} deg"

@@ -5,8 +5,17 @@ const WATER_DENSITY: f64 = 1000.0;
 
 /// Hull resistance force along the boat's surge axis (N); opposes motion.
 pub fn hull_resistance(params: &BoatParams, surge: f64) -> f64 {
-    -surge.signum()
-        * (params.resistance_linear * surge.abs() + params.resistance_quadratic * surge * surge)
+    let speed = surge.abs();
+    let table = &params.hull_drag_area;
+    let drag_area = match table.iter().position(|&(v, _)| speed < v) {
+        None => table[table.len() - 1].1,
+        Some(0) => table[0].1,
+        Some(i) => {
+            let ((v0, a0), (v1, a1)) = (table[i - 1], table[i]);
+            a0 + (a1 - a0) * (speed - v0) / (v1 - v0)
+        }
+    };
+    -surge.signum() * 0.5 * WATER_DENSITY * drag_area * speed * speed
 }
 
 /// Force from the centreboard (and lateral hull area), (forward, starboard) in N.
