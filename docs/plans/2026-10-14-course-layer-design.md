@@ -38,7 +38,7 @@ Not tested: mark radius edge exactly on the boundary, anything inside `sailsim`.
 
 `CourseRun::score()` is the episode total and `last_reward()` the latest step's reward. One definition serves the viewer (via wasm) and the Gymnasium env (#10). Weights live in `RewardConfig` (defaults below), all tuned, none sourced.
 
-- Progress: `progress_per_m` (1.0) per metre gained towards the next mark, negative when losing ground. Reaching a mark credits the rest of the leg, so a leg adds up to its length.
+- Progress: `progress_per_m` (1.0) per metre gained towards the next mark, negative when losing ground. Reaching a mark credits the rest of the leg, so every leg pays exactly its mark-to-mark length (the first leg from the start). It does not matter where in the mark's radius the boat crosses, so all finishers earn the same progress and rank purely by finish time (test `finishers_are_ranked_by_time_whatever_path_they_took`).
 - `mark_bonus` (50) for each mark reached in order.
 - `finish_bonus` (600) at the finish, scaled down linearly to 0 as the time reaches `finish_time_ref` (150 s), so each second saved is worth 4 points. This is where speed pays most.
 - `time_penalty_per_s` (0.3) every second in progress, so speed also pays along the way.

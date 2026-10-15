@@ -111,6 +111,11 @@ pub struct CourseRun {
     reward: RewardConfig,
     score: f64,
     last_reward: f64,
+    /// Where the current leg started (the start, then each mark reached) and
+    /// the metres gained on it so far: a leg always pays exactly its length,
+    /// whichever point of a mark's radius the boat happened to cross.
+    leg_origin: (f64, f64),
+    leg_gained: f64,
 }
 
 impl CourseRun {
@@ -126,6 +131,8 @@ impl CourseRun {
             reward: RewardConfig::default(),
             score: 0.0,
             last_reward: 0.0,
+            leg_origin: (0.0, 0.0),
+            leg_gained: 0.0,
         }
     }
 
@@ -151,6 +158,9 @@ impl CourseRun {
         self.outcome = Outcome::InProgress;
         self.score = 0.0;
         self.last_reward = 0.0;
+        let start = self.sim.state();
+        self.leg_origin = (start.x, start.y);
+        self.leg_gained = 0.0;
     }
 
     pub fn sim(&self) -> &Sim {
@@ -189,8 +199,13 @@ impl CourseRun {
         let dist_before = (mark.x - before.x).hypot(mark.y - before.y);
         let dist_after = (mark.x - state.x).hypot(mark.y - state.y);
         if dist_after <= self.course.mark_radius {
-            // Credit the rest of the leg, so progress adds up to the leg length.
-            reward += self.reward.progress_per_m * dist_before + self.reward.mark_bonus;
+            // Credit the rest of the leg, so progress adds up to the leg length
+            // exactly, however the boat approached the mark.
+            let leg_length = (mark.x - self.leg_origin.0).hypot(mark.y - self.leg_origin.1);
+            reward += self.reward.progress_per_m * (leg_length - self.leg_gained)
+                + self.reward.mark_bonus;
+            self.leg_origin = (mark.x, mark.y);
+            self.leg_gained = 0.0;
             self.next += 1;
             if self.next == self.course.marks.len() {
                 self.outcome = Outcome::Finished { time };
@@ -198,7 +213,9 @@ impl CourseRun {
                 reward += self.reward.finish_bonus * speed;
             }
         } else {
-            reward += self.reward.progress_per_m * (dist_before - dist_after);
+            let gained = dist_before - dist_after;
+            self.leg_gained += gained;
+            reward += self.reward.progress_per_m * gained;
         }
         self.finish_step(reward)
     }

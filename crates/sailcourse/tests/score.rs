@@ -153,3 +153,56 @@ fn the_default_reward_pays_clearly_for_a_faster_finish() {
     // And a slow finish still beats not finishing.
     assert!(bonus(100.0) > 0.0);
 }
+
+/// Sail a short course with free heading and a wobbling rudder, so different
+/// `wobble` values reach each mark at a different point inside its radius.
+fn finisher(wobble: f64, sheet: f64) -> (f64, f64) {
+    let sim = Sim::new(SimConfig::default());
+    let course = Course {
+        marks: vec![
+            Mark { x: 0.0, y: 40.0 },
+            Mark { x: -15.0, y: 75.0 },
+            Mark { x: -15.0, y: 110.0 },
+        ],
+        mark_radius: 6.0,
+    };
+    let mut run = CourseRun::new(sim, course);
+    run.reset(scenario(0.0));
+    for i in 0..30_000 {
+        // Steer at the next mark, plus a slow wobble.
+        let p = run.progress();
+        let err = (p.bearing - run.sim().state().heading + std::f64::consts::PI)
+            .rem_euclid(std::f64::consts::TAU)
+            - std::f64::consts::PI;
+        let rudder = (2.0 * err + wobble * ((i as f64) * 0.01).sin()).clamp(-1.0, 1.0);
+        if run.step(Controls { rudder, sheet, hike: 0.0 }) != Outcome::InProgress {
+            break;
+        }
+    }
+    let Outcome::Finished { time } = run.outcome() else {
+        panic!("wobble {wobble} sheet {sheet} did not finish: {:?}", run.outcome());
+    };
+    (time, run.score())
+}
+
+#[test]
+fn finishers_are_ranked_by_time_whatever_path_they_took() {
+    let cfg = RewardConfig::default();
+    let runs = [
+        finisher(0.0, 0.6),
+        finisher(0.3, 0.6),
+        finisher(0.6, 0.5),
+        finisher(0.0, 0.4),
+    ];
+    // Every finisher gets the same progress and bonuses, so the score depends
+    // on the finish time alone: a fixed amount per second.
+    let per_second = cfg.finish_bonus / cfg.finish_time_ref + cfg.time_penalty_per_s;
+    let (t0, s0) = runs[0];
+    for &(t, s) in &runs[1..] {
+        assert!(
+            (s - (s0 - per_second * (t - t0))).abs() < 1e-6,
+            "time {t} score {s} vs time {t0} score {s0}"
+        );
+    }
+    assert!(runs.iter().any(|r| (r.0 - t0).abs() > 0.5), "the runs should differ in time");
+}
