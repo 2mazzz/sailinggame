@@ -22,17 +22,23 @@ pub struct Course {
 /// A mark is reached within this many metres on the default course.
 pub const DEFAULT_MARK_RADIUS: f64 = 6.0;
 
-/// Default course (x, y pairs, metres; x east, y north): a reverse C that
-/// starts at the top. East along the top, south down the back, west along the
-/// bottom, so for a northerly wind it is a beam reach, a run, then a beam reach.
-/// Tight on purpose: marks 35 to 50 m apart with a 6 m radius, so the angle
-/// you come in at decides how well you round each one.
-const DEFAULT_MARKS: [(f64, f64); 5] = [
-    (50.0, 0.0),
-    (75.0, -25.0),
-    (75.0, -65.0),
-    (50.0, -90.0),
-    (0.0, -90.0),
+/// Default course (x, y pairs, metres; x east, y north): a flat figure 8 lying
+/// on its side, crossing at the start. The boat leaves up and to starboard,
+/// rounds the right lobe, passes back through the start, rounds the left lobe
+/// and finishes at the start. For a northerly wind the diagonal legs are close
+/// reaches (about 70 degrees off the wind) and the lobe ends are broad reaches
+/// that pass dead downwind, so the turns at the ends are sharp changes of point
+/// of sail. Tight on purpose: marks 35 to 40 m apart with a 6 m radius, so the
+/// angle you come in at decides how well you round each one.
+const DEFAULT_MARKS: [(f64, f64); 8] = [
+    (38.0, 14.0),
+    (70.0, 0.0),
+    (38.0, -14.0),
+    (0.0, 0.0),
+    (-38.0, 14.0),
+    (-70.0, 0.0),
+    (-38.0, -14.0),
+    (0.0, 0.0),
 ];
 
 pub fn default_course() -> Course {

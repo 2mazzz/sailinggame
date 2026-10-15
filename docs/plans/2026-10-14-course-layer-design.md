@@ -46,4 +46,4 @@ Not tested: mark radius edge exactly on the boundary, anything inside `sailsim`.
 
 ## Baseline agent
 
-`sailcourse::baseline::baseline_controls(&run)` is a scripted agent for comparison and for viewing one example: steer at the next mark, trim the sheet to about half the apparent wind angle, hike when heeled past 12 degrees. It does not tack. On the default course in 10 knots it finishes in about 85 s with a score near 675 (test `the_baseline_agent_finishes_the_default_course_with_a_positive_score`). The viewer runs it with the P key or `?auto=1`.
+`sailcourse::baseline::baseline_controls(&run)` is a scripted agent for comparison and for viewing one example: steer at the next mark, trim the boom 12 degrees inside the apparent wind angle (a fixed angle of attack), hike when heeled past 12 degrees. It does not tack. On the default figure-8 course it finishes in about 94 s (score near 900) in 6 m/s, in 58 s (score near 950) in 11 m/s, and capsizes on a sharp turn from about 13 m/s, the default wind for training and the viewer (25 kn) (test `the_baseline_agent_finishes_the_default_course_with_a_positive_score`). The viewer runs it with the P key or `?auto=1`.

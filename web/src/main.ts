@@ -2,8 +2,8 @@ import { Application, Container, Graphics, Text, type TextStyleOptions } from "p
 import init, { Game } from "./wasm/sailsim_wasm.js";
 import { color, css, font, motion, radius, stroke } from "./theme";
 
-// Wind speed in knots from the URL, e.g. ?wind=24 (default 12 kn).
-const WIND_KN = Number(new URLSearchParams(location.search).get("wind")) || 12;
+// Wind speed in knots from the URL, e.g. ?wind=24 (default 25 kn).
+const WIND_KN = Number(new URLSearchParams(location.search).get("wind")) || 25;
 let windKn = WIND_KN;
 // The scripted baseline agent steers when on: press P, or open with ?auto=1.
 let autopilot = new URLSearchParams(location.search).has("auto");

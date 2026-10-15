@@ -22,8 +22,8 @@ def test_a_run_logs_each_generation_and_records_replays(tmp_path):
     g = log["generations"][0]
     for key in ("gen", "best", "mean", "median", "finish_rate", "capsize_rate", "mean_finish_time"):
         assert key in g
-    assert log["course"]["radius"] == 6.0 and len(log["course"]["marks"]) == 5
-    assert log["baseline"]["score"] > 400
+    assert log["course"]["radius"] == 6.0 and len(log["course"]["marks"]) == 8
+    assert log["baseline"]["outcome"] in {"finished", "capsized", "time_limit"}
     # Elitism: the best score never goes down.
     best = [g["best"] for g in log["generations"]]
     assert all(b2 >= b1 - 1e-9 for b1, b2 in zip(best, best[1:]))

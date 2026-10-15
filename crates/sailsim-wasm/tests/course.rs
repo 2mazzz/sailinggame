@@ -11,21 +11,20 @@ fn sail(game: &mut Game, seconds: f64) {
 }
 
 #[test]
-fn default_course_is_a_reverse_c_starting_at_the_top() {
+fn default_course_is_a_figure_eight_crossing_at_the_start() {
     let game = Game::new(6.0, 0.0);
     let marks = game.course_marks();
     let pts: Vec<(f64, f64)> = marks.chunks(2).map(|m| (m[0], m[1])).collect();
-    assert_eq!(pts.len(), 5);
-    // Along the top first: east of the start, at the start's height.
-    assert!(pts[0].0 > 0.0 && pts[0].1.abs() < 10.0, "first mark {:?}", pts[0]);
-    // Then the back of the C: the easternmost marks are in the middle.
+    assert_eq!(pts.len(), 8);
+    // Two lobes, one each side of the start.
     let max_x = pts.iter().map(|p| p.0).fold(f64::MIN, f64::max);
-    assert!(pts[1].0 == max_x || pts[2].0 == max_x);
-    assert!(pts[0].0 < max_x && pts[4].0 < max_x);
-    // Down to the bottom and back west, ending below and level with the start.
-    let min_y = pts.iter().map(|p| p.1).fold(f64::MAX, f64::min);
-    assert_eq!(pts[4].1, min_y);
-    assert!(pts[4].0.abs() < 10.0, "last mark {:?}", pts[4]);
+    let min_x = pts.iter().map(|p| p.0).fold(f64::MAX, f64::min);
+    assert!(max_x > 50.0 && min_x < -50.0, "lobes {min_x}..{max_x}");
+    // The first mark is up and to starboard; the path passes back through the
+    // start half way round and finishes there.
+    assert!(pts[0].0 > 0.0 && pts[0].1 > 0.0, "first mark {:?}", pts[0]);
+    assert!(pts[3].0.hypot(pts[3].1) < 1.0, "crossing mark {:?}", pts[3]);
+    assert!(pts[7].0.hypot(pts[7].1) < 1.0, "finish mark {:?}", pts[7]);
     let p = game.course_progress();
     assert_eq!(p[0], 0.0);
     assert!((p[1] - marks[1].hypot(marks[0])).abs() < 1e-9);

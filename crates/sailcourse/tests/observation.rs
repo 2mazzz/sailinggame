@@ -59,8 +59,8 @@ fn every_input_stays_finite_and_bounded_while_sailing() {
 }
 
 #[test]
-fn the_default_course_is_the_tight_reverse_c() {
+fn the_default_course_is_the_tight_figure_eight() {
     let c = default_course();
-    assert_eq!(c.marks.len(), 5);
+    assert_eq!(c.marks.len(), 8);
     assert_eq!(c.mark_radius, 6.0);
 }

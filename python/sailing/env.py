@@ -29,7 +29,7 @@ class SailEnv(gym.Env):
         capsize=True,
         fixed_heading=False,
         hike=False,
-        wind_speed=6.2,
+        wind_speed=13.0,
         wind_dir=0.0,
         gust=0.0,
         shift_deg=0.0,
