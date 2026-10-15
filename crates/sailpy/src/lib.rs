@@ -127,6 +127,21 @@ impl Core {
         }
     }
 
+    /// The scripted baseline agent's controls now: `(rudder, sheet, hike)`.
+    fn baseline_controls(&self) -> (f64, f64, f64) {
+        let c = sailcourse::baseline::baseline_controls(&self.run);
+        (c.rudder, c.sheet, c.hike)
+    }
+
+    /// The course: marks as flat x, y pairs (m) and the mark radius (m).
+    fn course(&self) -> (Vec<f64>, f64) {
+        let course = self.run.course();
+        (
+            course.marks.iter().flat_map(|m| [m.x, m.y]).collect(),
+            course.mark_radius,
+        )
+    }
+
     #[staticmethod]
     fn obs_len() -> usize {
         sailcourse::observation::OBS_LEN

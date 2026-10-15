@@ -37,6 +37,8 @@ class SailEnv(gym.Env):
         time_limit=150.0,
     ):
         self._hike = hike
+        self.wind_speed = wind_speed
+        self.wind_dir = wind_dir
         self._core = Core(
             wind_speed, wind_dir, capsize, fixed_heading, gust, shift_deg, frame_skip, time_limit
         )

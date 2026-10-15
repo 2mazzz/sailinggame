@@ -137,6 +137,8 @@ def run(
             "elite": elite,
             "time_limit": time_limit,
             "hidden": HIDDEN,
+            "wind_speed": probe.wind_speed,
+            "wind_dir": probe.wind_dir,
         },
         "course": {"marks": course["marks"], "radius": course["radius"]},
         "checkpoints": checkpoints,

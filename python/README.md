@@ -25,3 +25,7 @@ env -u CONDA_PREFIX VIRTUAL_ENV=$PWD/.venv PATH=$PWD/.venv/bin:$PATH \
 ```
 
 Each generation 100 small networks sail the course once; the best 10 % carry over unchanged and the rest are mutated copies of the best 30 %. About 25 s for 100 generations on 8 cores. It writes `training.json` (per-generation best, mean, median, finish and capsize rates, mean finish time, the course, and the scripted baseline for reference) and a `gen_NNNN.json` replay of all boats for checkpoint generations. `web/public/runs/` is not committed; the viewer's Training page reads it.
+
+## Viewing a run
+
+`npm run dev` in `web/`, then open `/training.html` (or `/training.html?run=NAME&gen=99&t=40` to freeze the replay at generation 99, second 40). The page shows the score, finish and capsize rate and finish time per generation, and replays every boat of a checkpoint generation at once as ghosts with wakes. Click or drag on a graph, drag the slider, or use the left and right arrow keys to move between checkpoint generations; Space pauses.
