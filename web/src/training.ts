@@ -7,7 +7,7 @@ import { color, css, font, radius, stroke } from "./theme";
 // come from `python -m sailing.evolve` (web/public/runs/<run>/).
 
 const PARAMS = new URLSearchParams(location.search);
-const RUN = PARAMS.get("run") ?? "rudder-0.4-1000";
+const RUN = PARAMS.get("run") ?? "rudder-0.2-2000";
 // ?gen=N picks the nearest checkpoint, ?t=S freezes the replay at S seconds (for screenshots and links).
 const START_GEN = PARAMS.has("gen") ? Number(PARAMS.get("gen")) : 0;
 const FREEZE_T = PARAMS.has("t") ? Number(PARAMS.get("t")) : null;

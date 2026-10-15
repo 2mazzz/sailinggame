@@ -116,7 +116,7 @@ def _stats(gen, results):
 
 def checkpoint_gens(generations):
     """Early generations densely, later ones sparsely, always the last."""
-    picks = {0, 1, 2, 3, 5, 8, 12, 18, 25, 35, 50, 70, 100, 140, 200, 280, 400, 560, 800}
+    picks = {0, 1, 2, 3, 5, 8, 12, 18, 25, 35, 50, 70, 100, 140, 200, 280, 400, 560, 800, 1100, 1500}
     gens = {g for g in picks if g < generations}
     gens.add(generations - 1)
     return sorted(gens)
