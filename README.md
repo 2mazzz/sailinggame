@@ -2,6 +2,23 @@
 
 A small sailing simulator in Rust where neural-net sailors learn to race a course by evolution. A viewer in `web/` replays every boat of every checkpoint generation as ghosts with wakes.
 
+## Play it yourself
+
+You can sail the boat yourself in the browser, on the same physics the neural nets use. You steer, trim the sheet and hike out, round the marks in order, and try to beat the clock. The wind, its direction, gusts and wind shifts have sliders.
+
+![The game](docs/img/game.png)
+
+| Key | Action |
+|---|---|
+| `A` / `D` or `←` / `→` | rudder |
+| `W` / `S` or `↑` / `↓` | trim the sheet in / ease it out |
+| `Space` or `Shift` (hold) | hike: lean out to keep the boat flat |
+| `P` | hand over to the scripted autopilot (or open with `?auto=1`) |
+| `C` | capsizing on or off |
+| `R` | restart |
+
+The yellow line is the apparent wind, the arrow around the boat points to the next mark, and the ring shows heel. Run it from `web/` with `npm install` and `npm run dev` (it builds the Rust core to WebAssembly first, so you need the `wasm32-unknown-unknown` target and `wasm-bindgen`), then open the address Vite prints. The trained boats are not playable in the browser yet. They are replayed on the Training page (`/training.html`), and the autopilot there is the hand-written baseline.
+
 ![Boats at four points of training](docs/img/tracks.png)
 
 *The same population at generations 0, 500, 3000 and 9999, each on its own random course. Blue: all 100 boats. Orange: the best one. Grey circles: the marks.*
@@ -53,9 +70,9 @@ The loop is `python/sailing/evolve.py`. Episodes run in parallel across processe
 
 ![Learning curves](docs/img/learning.png)
 
-![All 100 boats mid-run](docs/img/midrun.png)
+![The Training page, all 100 boats mid-run](docs/img/midrun.png)
 
-*Generation 3000, 30 s into the run: all 100 boats at once, rounding the marks, with the path each has sailed so far. Orange is the best boat.*
+*The game's Training page at generation 3000, 30 s into the run: all 100 boats at once with wakes, rounding the marks, and the training graphs on the right. Open it yourself with `/training.html?run=maps-1000x10&gen=3000&t=30`.*
 
 | Generations | Finish rate (training course) | Finish rate (best boat, unseen courses) |
 |---|---|---|
@@ -83,4 +100,12 @@ Regenerate the figures above from a finished run:
 
 ```sh
 .venv/bin/python python/scripts/readme_figures.py web/public/runs/maps-1000x10 docs/img
+```
+
+`docs/img/midrun.png` is a screenshot of the page itself (with `npx vite` running in `web/`):
+
+```sh
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --use-angle=swiftshader --enable-unsafe-swiftshader \
+    --force-device-scale-factor=2 --window-size=1500,950 --virtual-time-budget=15000 \
+    --screenshot=docs/img/midrun.png "http://localhost:5173/training.html?run=maps-1000x10&gen=3000&t=30"
 ```

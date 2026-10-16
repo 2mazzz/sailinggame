@@ -77,44 +77,6 @@ def tracks(run, gens, out):
     plt.close(fig)
 
 
-def midrun(run, gen, t, out):
-    """Every boat of one generation at second `t`, with the path each has sailed so far."""
-    r = json.loads((run / f"gen_{gen:04d}.json").read_text())
-    k = int(t / r["dt"])
-    fig, ax = plt.subplots(figsize=(7, 6.4))
-    m = np.array(r["course"]["marks"])
-    for mx, my in m:
-        ax.add_patch(plt.Circle((mx, my), r["course"]["radius"], color=INK, alpha=0.15, zorder=1))
-    ax.plot(*m.T, "-", color=INK, lw=0.6, alpha=0.3, zorder=1)
-    ax.plot(*m.T, "o", color=INK, ms=3, zorder=4)
-    for i, b in reversed(list(enumerate(r["boats"]))):
-        p = np.array(b["p"]).reshape(-1, 4)[: k + 1] / np.array([10, 10, 100, 100])
-        best = i == 0
-        ax.plot(p[:, 0], p[:, 1], color=ORANGE if best else BLUE, lw=1.4 if best else 0.5,
-                alpha=0.9 if best else 0.3, zorder=2)
-        if len(p) > 3:
-            d = p[-1, :2] - p[-4, :2]
-            a = np.arctan2(d[1], d[0])
-            hull = np.array([[1, 0], [-0.6, 0.45], [-0.6, -0.45]]) * 4.5
-            rot = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
-            ax.add_patch(plt.Polygon(hull @ rot.T + p[-1, :2], color=ORANGE if best else BLUE, alpha=1 if best else 0.85,
-                                     ec="white", lw=0.4, zorder=5 if best else 3))
-    pos = np.array([np.array(b["p"]).reshape(-1, 4)[min(k, len(b["p"]) // 4 - 1), :2] / 10 for b in r["boats"]])
-    pad = 40
-    ax.set_xlim(pos[:, 0].min() - pad, pos[:, 0].max() + pad)
-    ax.set_ylim(pos[:, 1].min() - pad, pos[:, 1].max() + pad)
-    w = r["wind"]
-    ax.set_title(f"All 100 boats at generation {gen}, {t:.0f} s into the run\n"
-                 f"wind {w['speed'] * 1.944:.0f} kn from {w['dir']:.0f}°", fontsize=11)
-    ax.set_aspect("equal")
-    ax.set_xticks([]); ax.set_yticks([])
-    for sp in ax.spines.values():
-        sp.set_visible(False)
-    fig.tight_layout()
-    fig.savefig(out / "midrun.png", dpi=160, bbox_inches="tight")
-    plt.close(fig)
-
-
 def physics(out):
     """A sketch of the forces the simulator models, top-down and from behind."""
     fig, (a, b) = plt.subplots(1, 2, figsize=(11, 5.2), gridspec_kw={"width_ratios": [1.15, 1]})
@@ -178,7 +140,6 @@ def main():
     log = json.loads((run / "training.json").read_text())
     learning(log, out)
     tracks(run, [0, 500, 3000, 9999], out)
-    midrun(run, 3000, 30.0, out)
     physics(out)
 
 
