@@ -11,3 +11,7 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Git attribution
+
+Never add Claude as a co-author. No `Co-Authored-By: Claude ...` trailer (or any other Claude attribution) in commit messages, and no "Generated with Claude Code" line in pull request descriptions.
