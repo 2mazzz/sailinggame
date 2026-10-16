@@ -15,12 +15,37 @@ LEG_ANGLE = (65.0, 140.0)  # degrees off the wind, either tack
 WIND_SPEED = (8.0, 16.0)  # m/s
 
 
-def random_course(rng, wind_dir=0.0, marks=MARKS):
-    """Marks from a start at the origin; each leg's angle to the wind is in `LEG_ANGLE`."""
+CLOSE_ANGLE = (65.0, 75.0)  # degrees off the wind: the closest legs the boat is asked to sail
+REVERSAL_SPREAD = 15.0  # degrees either side of straight back along the previous leg
+
+
+def _hard_angle(rng, previous):
+    """Signed leg angle to the wind (degrees) for a hard leg: a reversal (almost straight
+    back along the previous leg) when that is a legal leg, else a leg close to the wind."""
+    if previous is not None:
+        back = previous + 180.0 + rng.uniform(-REVERSAL_SPREAD, REVERSAL_SPREAD)
+        back = (back + 180.0) % 360.0 - 180.0
+        if LEG_ANGLE[0] <= abs(back) <= LEG_ANGLE[1]:
+            return back
+    return rng.uniform(*CLOSE_ANGLE) * rng.choice([-1.0, 1.0])
+
+
+def random_course(rng, wind_dir=0.0, marks=MARKS, hard=0.0):
+    """Marks from a start at the origin; each leg's angle to the wind is in `LEG_ANGLE`.
+
+    With `hard` above 0 that share of legs (on average) is a hard one: a sharp reversal
+    of the previous leg or a leg close to the wind, the cases a boat trained on plain
+    random courses sails worst."""
     x = y = 0.0
     out = []
+    previous = None
     for _ in range(marks):
-        angle = np.radians(rng.uniform(*LEG_ANGLE) * rng.choice([-1.0, 1.0]) + wind_dir)
+        if hard > 0.0 and rng.random() < hard:
+            angle_to_wind = _hard_angle(rng, previous)
+        else:
+            angle_to_wind = rng.uniform(*LEG_ANGLE) * rng.choice([-1.0, 1.0])
+        previous = angle_to_wind
+        angle = np.radians(angle_to_wind + wind_dir)
         length = rng.uniform(*LEG_LENGTH)
         x += length * np.sin(angle)
         y += length * np.cos(angle)
@@ -28,11 +53,12 @@ def random_course(rng, wind_dir=0.0, marks=MARKS):
     return out
 
 
-def random_scenario(rng, random_wind=True):
+def random_scenario(rng, random_wind=True, hard=0.0):
     """A random course in the given wind; with `random_wind=False` the wind is the
-    default 13 m/s from the north every time."""
+    default 13 m/s from the north every time. `hard` is as in `random_course`. Every
+    course has exactly `MARKS` marks, which is what the sailor's observation shows."""
     if random_wind:
         speed, direction = float(rng.uniform(*WIND_SPEED)), float(rng.uniform(0.0, 360.0))
     else:
         speed, direction = 13.0, 0.0
-    return {"marks": random_course(rng, direction), "wind_speed": speed, "wind_dir": direction}
+    return {"marks": random_course(rng, direction, hard=hard), "wind_speed": speed, "wind_dir": direction}

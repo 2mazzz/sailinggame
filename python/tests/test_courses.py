@@ -49,3 +49,28 @@ def test_the_baseline_sails_random_courses_in_any_wind_direction():
         times.append((info["outcome"], info["time"]))
     assert times[0][0] == times[1][0]
     assert abs(times[0][1] - times[1][1]) < 3.0, times
+
+
+def test_hard_courses_have_more_sharp_reversals_and_close_legs_and_stay_legal():
+    def turn_and_closest(hard, wind_dir=0.0):
+        sharp = close = 0
+        for i in range(200):
+            marks = random_course(np.random.default_rng(i), wind_dir, hard=hard)
+            assert len(marks) == MARKS
+            angle, length = _leg_angles_to_wind(marks, wind_dir)
+            assert np.all((angle >= LEG_ANGLE[0] - 0.1) & (angle <= LEG_ANGLE[1] + 0.1))
+            pts = np.array([(0.0, 0.0)] + list(marks))
+            d = np.diff(pts, axis=0)
+            bearing = np.degrees(np.arctan2(d[:, 0], d[:, 1]))
+            turns = np.abs((np.diff(bearing) + 180.0) % 360.0 - 180.0)
+            sharp += int((turns > 165.0).sum())
+            close += int((angle < 76.0).sum())
+        return sharp, close
+
+    plain, hard = turn_and_closest(0.0), turn_and_closest(0.6)
+    assert hard[0] > 2 * plain[0] and hard[1] > 2 * plain[1]
+
+
+def test_plain_courses_are_unchanged_by_the_hard_option_existing():
+    a = random_course(np.random.default_rng(4), 30.0)
+    assert a == random_course(np.random.default_rng(4), 30.0, hard=0.0)

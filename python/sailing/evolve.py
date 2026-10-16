@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .courses import random_scenario
+from .courses import MARKS, random_scenario
 from . import _core
 from .env import OBS_LEN, SailEnv
 
@@ -104,6 +104,8 @@ def _baseline(scenario):
 
 
 def _scenario_args(sc):
+    if len(sc["marks"]) != MARKS:
+        raise ValueError(f"a course needs {MARKS} marks (the sailor's observation shows that many), got {len(sc['marks'])}")
     flat = [float(v) for m in sc["marks"] for v in m]
     return flat, float(sc["wind_speed"]), float(sc["wind_dir"])
 
@@ -184,21 +186,21 @@ FIGURE_8 = {"marks": SailEnv().course["marks"], "wind_speed": 13.0, "wind_dir": 
 HELD_OUT = 10
 
 
-def _stats(gen, results):
-    scores = np.array([r["score"] for r in results])
-    top = max(results, key=lambda r: r["score"])
-    finished = [r["time"] for r in results if r["outcome"] == "finished"]
-    n = len(results)
+def _stats(gen, fitness, episodes, top):
+    """`fitness` is each boat's mean score over the generation's courses, `episodes` every
+    episode sailed (boats x courses) and `top` the best boat's own episodes."""
+    finished = [r["time"] for r in episodes if r["outcome"] == "finished"]
+    n = len(episodes)
     return {
         "gen": gen,
-        "best": float(scores.max()),
-        "mean": float(scores.mean()),
-        "median": float(np.median(scores)),
+        "best": float(fitness.max()),
+        "mean": float(fitness.mean()),
+        "median": float(np.median(fitness)),
         "finish_rate": len(finished) / n,
-        "capsize_rate": sum(r["outcome"] == "capsized" for r in results) / n,
+        "capsize_rate": sum(r["outcome"] == "capsized" for r in episodes) / n,
         "mean_finish_time": float(np.mean(finished)) if finished else None,
         "fastest_finish_time": float(min(finished)) if finished else None,
-        "best_controls": top["controls"],
+        "best_controls": {k: float(np.mean([r["controls"][k] for r in top])) for k in ("rudder", "sheet", "hike")},
     }
 
 
@@ -228,6 +230,8 @@ def run(
     randomize=True,
     gens_per_map=1,
     backend="rust",
+    courses_per_gen=4,
+    hard_fraction=0.3,
 ):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -254,6 +258,8 @@ def run(
             "hidden": HIDDEN,
             "randomize": randomize,
             "gens_per_map": gens_per_map,
+            "courses_per_gen": courses_per_gen if randomize else 1,
+            "hard_fraction": hard_fraction,
             "backend": backend,
             "wind_speed": probe.wind_speed,
             "wind_dir": probe.wind_dir,
@@ -266,9 +272,9 @@ def run(
     evaluator = (_RustEvaluator if backend == "rust" else _PythonEvaluator)(workers, time_limit, rudder_limit)
     baselines = {}  # the scripted baseline's score per course, scored once however many generations use it
 
-    def baseline_score(key, scenario):
+    def baseline_score(key, scenarios):
         if key not in baselines:
-            baselines[key] = evaluator.baseline(scenario)["score"]
+            baselines[key] = float(np.mean([evaluator.baseline(sc)["score"] for sc in scenarios]))
         return baselines[key]
 
     def held_out_stats(tests):
@@ -287,35 +293,48 @@ def run(
         log["baseline"] = {k: baseline[k] for k in ("score", "time", "outcome", "controls")}
         for gen in range(generations):
             record = gen in checkpoints
-            # One course and wind for the whole generation, so boats are ranked on equal terms;
-            # the same one for `gens_per_map` generations in a row before a new one is drawn.
+            # The same courses and winds for the whole generation, so boats are ranked on equal terms,
+            # and several of them so that a boat is ranked on how it sails in general, not on one
+            # course; the same ones for `gens_per_map` generations in a row before new ones are drawn.
             map_id = gen // gens_per_map
-            scenario = random_scenario(np.random.default_rng([seed, 2, map_id])) if randomize else FIGURE_8
+            if randomize:
+                scenarios = [
+                    random_scenario(np.random.default_rng([seed, 2, map_id * courses_per_gen + j]), hard=hard_fraction)
+                    for j in range(courses_per_gen)
+                ]
+            else:
+                scenarios = [FIGURE_8]
+            k = len(scenarios)
+            scenario = scenarios[0]  # the one replayed and shown
             # The previous generation's best boat is tried on the held-out courses in the same batch.
             extra = suite if pending else []
             t0 = time.perf_counter()
             batch = evaluator.episodes(
-                list(pop) + ([pending[1]] * len(extra) if extra else []),
-                [scenario] * len(pop) + extra,
-                [record] * len(pop) + [False] * len(extra),
-                None if times is None else list(times) + [time_limit] * len(extra),
+                [p for p in pop for _ in range(k)] + ([pending[1]] * len(extra) if extra else []),
+                scenarios * len(pop) + extra,
+                [record and j == 0 for _ in pop for j in range(k)] + [False] * len(extra),
+                None if times is None else [t for t in times for _ in range(k)] + [time_limit] * len(extra),
             )
             evaluate_s = time.perf_counter() - t0
-            results, tests = batch[: len(pop)], batch[len(pop) :]
+            episodes, tests = batch[: len(pop) * k], batch[len(pop) * k :]
+            per_boat = [episodes[i * k : (i + 1) * k] for i in range(len(pop))]
+            fitness = np.array([np.mean([r["score"] for r in b]) for b in per_boat])
             if pending:
                 pending[0]["held_out"] = held_out_stats(tests)
                 pending[0]["timing"]["held_out_batched"] = True
                 log["generations"].append(pending[0])
-            order = np.argsort([-r["score"] for r in results], kind="stable")
-            stats = _stats(gen, results)
+            order = np.argsort(-fitness, kind="stable")
+            stats = _stats(gen, fitness, episodes, per_boat[order[0]])
             stats["wind_speed"], stats["wind_dir"] = scenario["wind_speed"], scenario["wind_dir"]
             t0 = time.perf_counter()
-            stats["baseline_score"] = baseline_score(map_id, scenario)
+            stats["baseline_score"] = baseline_score(map_id, scenarios)
             stats["timing"] = {"evaluate_s": evaluate_s, "baseline_s": time.perf_counter() - t0}
             pending = (stats, pop[order[0]].copy())
             if record:
+                # Each boat as it sailed the shown course; "fitness" is its mean over all the courses.
                 boats = [
-                    {k: results[i][k] for k in ("score", "outcome", "time", "p")} for i in order
+                    {**{key: per_boat[i][0][key] for key in ("score", "outcome", "time", "p")}, "fitness": float(fitness[i])}
+                    for i in order
                 ]
                 (out / f"gen_{gen:04d}.json").write_text(
                     json.dumps(
@@ -330,7 +349,7 @@ def run(
                 )
             (out / "training.json").write_text(json.dumps(log))
             (out / "best.json").write_text(
-                json.dumps({"gen": gen, "score": results[order[0]]["score"], "params": pop[order[0]].tolist()})
+                json.dumps({"gen": gen, "score": float(fitness[order[0]]), "params": pop[order[0]].tolist()})
             )
             # Next generation: keep the elite, fill the rest with mutated good boats.
             ranked = pop[order]
@@ -339,7 +358,7 @@ def run(
             # Wide steps early to explore, small ones late to polish.
             step = sigma + (sigma_final - sigma) * gen / max(1, generations - 1)
             children = children + rng.normal(0.0, step, size=children.shape)
-            ranked_times = np.array([results[i]["time"] for i in order])
+            ranked_times = np.array([np.mean([r["time"] for r in per_boat[i]]) for i in order])
             times = np.concatenate([ranked_times[:elite], ranked_times[parent]])
             pop = np.vstack([ranked[:elite], children])
         # The last generation's held-out check has no next batch to ride along with.
@@ -367,6 +386,8 @@ def main():
     p.add_argument("--rudder-limit", type=float, default=0.4, help="largest rudder as a fraction of full (35 deg)")
     p.add_argument("--time-limit", type=float, default=150.0)
     p.add_argument("--gens-per-map", type=int, default=1, help="generations sailed on each random course before a new one")
+    p.add_argument("--courses-per-gen", type=int, default=4, help="courses (and winds) every boat sails each generation; its score is the mean")
+    p.add_argument("--hard-fraction", type=float, default=0.3, help="share of training legs that are sharp reversals or close to the wind (held-out courses are not)")
     p.add_argument("--backend", choices=["rust", "python"], default="rust", help="rust sails whole populations in parallel inside Rust; python is the slower reference")
     p.add_argument("--fixed", action="store_true", help="always the figure 8 in a 13 m/s northerly, as before")
     args = p.parse_args()
@@ -374,6 +395,7 @@ def main():
         args.out, args.population, args.generations, args.workers, args.seed, args.time_limit, args.sigma,
         args.sigma_final,
         args.rudder_limit, randomize=not args.fixed, gens_per_map=args.gens_per_map, backend=args.backend,
+        courses_per_gen=args.courses_per_gen, hard_fraction=args.hard_fraction,
     )
     g = log["generations"][-1]
     print(f"gen {g['gen']}: best {g['best']:.0f}, finish rate {g['finish_rate']:.0%}")

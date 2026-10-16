@@ -25,7 +25,7 @@ The yellow line is the apparent wind, the arrow around the boat points to the ne
 
 ## What it does
 
-- Each boat is a 16-unit network that reads 14 inputs (boat state and the marks ahead) and outputs rudder, sheet and hike (leaning out).
+- Each boat is a 16-unit network that reads 34 inputs (boat state, and every mark still to round) and outputs rudder, sheet and hike (leaning out).
 - Every generation all 100 boats sail the same random course (8 legs) in a random wind (8 to 16 m/s, any direction). The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %.
 - A course is kept for 10 generations, then a new one is drawn. 10,000 generations is 1,000 courses.
 - Score rewards progress, mark bonuses and a fast finish, and charges a time cost and a capsize penalty. The rudder is limited to 0.4 of full deflection.
@@ -51,7 +51,7 @@ At 12 kn of wind the model gives about 5.3 kn and a VMG of 3.4 kn at 44° close-
 
 There is no gradient and no value function. The learner is a plain evolution strategy (neuroevolution) over the weights of a fixed network, so the only learning signal is the episode score.
 
-- **Policy:** 14 inputs, 16 tanh hidden units, 3 tanh outputs (rudder, sheet, hike). That is 291 numbers, stored as one flat vector per boat.
+- **Policy:** 34 inputs (9 for the boat and wind, 3 for each of the 8 marks still to round, and how many are left), 16 tanh hidden units, 3 tanh outputs (rudder, sheet, hike). That is 611 numbers, stored as one flat vector per boat.
 - **Fitness:** the total `sailcourse` score of one episode (progress, mark bonuses, a finish bonus for speed, a time cost, a capsize penalty). Every boat in a generation sails the same course and wind, so they are ranked on equal terms.
 - **Selection:** rank the 100 boats by score. The top 10 (elitism) carry over unchanged. The other 90 are copies of boats picked at random from the top 30, each with Gaussian noise added to every weight.
 - **Step size:** the noise starts at σ = 0.3 to explore and shrinks linearly to 0.03 to polish.

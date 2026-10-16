@@ -1,4 +1,4 @@
-use sailcourse::observation::{course_observation, OBS_LEN};
+use sailcourse::observation::{course_observation, MARK_SLOTS, OBS_LEN};
 use sailcourse::{default_course, Course, CourseRun, Mark};
 use sailsim::{Controls, Scenario, Sim, SimConfig};
 
@@ -88,8 +88,38 @@ fn the_mark_after_next_is_seen_relative_to_the_heading() {
 }
 
 #[test]
-fn on_the_last_leg_the_mark_after_next_is_the_next_mark() {
+fn on_the_last_leg_there_is_no_mark_after_next() {
     let obs = course_observation(&run_heading(0.0));
-    assert!(obs[12].abs() < 1e-9);
-    assert!((obs[13] - 1.0).abs() < 1e-9);
+    assert_eq!(&obs[12..15], &[0.0, 0.0, 0.0]);
+    assert!((obs[OBS_LEN - 1] - 1.0 / MARK_SLOTS as f64).abs() < 1e-9);
+}
+
+#[test]
+fn every_remaining_mark_is_seen_in_the_order_it_is_rounded() {
+    // Marks 100 m north, then north-east, then due east of the start, heading north.
+    let course = Course {
+        marks: vec![
+            Mark { x: 0.0, y: 100.0 },
+            Mark { x: 100.0, y: 100.0 },
+            Mark { x: 100.0, y: 0.0 },
+        ],
+        mark_radius: 6.0,
+    };
+    let mut run = CourseRun::new(Sim::new(SimConfig::default()), course);
+    run.reset(Scenario {
+        true_wind_speed: 6.0,
+        true_wind_dir: 0.0,
+        start_x: 0.0,
+        start_y: 0.0,
+        start_heading: 0.0,
+        start_speed: 0.0,
+        start_heel: 0.0,
+    });
+    let obs = course_observation(&run);
+    // Slot 2 is the third mark: due east, 90 degrees to starboard, 100 m away.
+    let (sin, cos, dist) = (obs[15], obs[16], obs[17]);
+    assert!((sin - 1.0).abs() < 1e-9 && cos.abs() < 1e-9 && (dist - 1.0).abs() < 1e-9);
+    // Slots 3 and up are empty.
+    assert!(obs[18..OBS_LEN - 1].iter().all(|v| *v == 0.0));
+    assert!((obs[OBS_LEN - 1] - 3.0 / MARK_SLOTS as f64).abs() < 1e-9);
 }

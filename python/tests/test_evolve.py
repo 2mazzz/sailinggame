@@ -38,9 +38,9 @@ def test_a_run_logs_each_generation_and_records_replays(tmp_path):
     assert len(replay["boats"]) == 12
     boat = replay["boats"][0]
     assert len(boat["p"]) % 4 == 0 and len(boat["p"]) >= 8
-    # Boats are sorted best first.
-    scores = [b["score"] for b in replay["boats"]]
-    assert scores == sorted(scores, reverse=True)
+    # Boats are sorted best first, by their mean score over the generation's courses.
+    fitness = [b["fitness"] for b in replay["boats"]]
+    assert fitness == sorted(fitness, reverse=True)
 
 
 def test_the_same_seed_gives_the_same_run(tmp_path):
@@ -82,3 +82,30 @@ def test_every_generation_logs_where_its_time_went(tmp_path):
     evolve.run(out, population=10, generations=3, seed=2, time_limit=20.0, workers=1)
     for g in json.loads((out / "training.json").read_text())["generations"]:
         assert g["timing"]["evaluate_s"] > 0 and g["timing"]["baseline_s"] >= 0
+
+
+def test_every_boat_is_scored_on_several_courses_and_the_score_is_the_mean(tmp_path):
+    out = tmp_path / "multi"
+    evolve.run(out, population=8, generations=2, workers=1, seed=2, time_limit=30.0, courses_per_gen=3)
+    log = json.loads((out / "training.json").read_text())
+    assert log["config"]["courses_per_gen"] == 3
+    best = json.loads((out / "best.json").read_text())
+    # Re-sail the best boat of the last generation on that generation's three courses.
+    from sailing.courses import random_scenario
+
+    scenarios = [random_scenario(np.random.default_rng([2, 2, 3 + j]), hard=0.3) for j in range(3)]
+    assert len(scenarios) == 3
+    rows = evolve._core.evaluate_episodes(
+        [best["params"]] * 3, [evolve._scenario_args(sc) for sc in scenarios], 0.4, 30.0, 0, 1
+    )
+    assert abs(np.mean([r[0] for r in rows]) - best["score"]) < 1e-6
+    # The finish rate counts every episode (8 boats x 3 courses).
+    g = log["generations"][0]
+    assert abs(g["finish_rate"] * 24 - round(g["finish_rate"] * 24)) < 1e-9
+
+
+def test_a_course_with_the_wrong_number_of_marks_is_refused():
+    import pytest
+
+    with pytest.raises(ValueError):
+        evolve._scenario_args({"marks": [(0.0, 10.0)] * 3, "wind_speed": 10.0, "wind_dir": 0.0})
