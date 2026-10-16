@@ -66,7 +66,7 @@ const SHIFT_SEED_SALT: u64 = 0xA5A5_5A5A_1234_8765;
 /// grows past `depower_moment`.
 fn depower(params: &BoatParams, moment: f64) -> f64 {
     let ratio = moment.abs() / params.depower_moment;
-    let eased = (1.0 + ratio.powi(4)).powf(-0.25);
+    let eased = 1.0 / (1.0 + ratio.powi(4)).sqrt().sqrt();
     params.depower_floor + (1.0 - params.depower_floor) * eased
 }
 
@@ -192,7 +192,7 @@ impl Sim {
             s.heel_rate,
             s.yaw_rate,
         ];
-        let params = self.params;
+        let params = &self.params;
         let (wind_dir, sheet) = (self.wind_dir(), controls.sheet);
         let (rudder, fixed_heading) = (controls.rudder, self.config.fixed_heading);
         let hike = controls.hike;

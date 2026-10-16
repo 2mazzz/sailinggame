@@ -22,10 +22,11 @@ pub fn apparent_wind(
     sway: f64,
 ) -> ApparentWind {
     let true_wind_angle = wind_dir - heading;
-    let flow_forward = -wind_speed * true_wind_angle.cos() - surge;
-    let flow_starboard = -wind_speed * true_wind_angle.sin() - sway;
+    let (sin, cos) = true_wind_angle.sin_cos();
+    let flow_forward = -wind_speed * cos - surge;
+    let flow_starboard = -wind_speed * sin - sway;
     ApparentWind {
-        speed: flow_forward.hypot(flow_starboard),
+        speed: (flow_forward * flow_forward + flow_starboard * flow_starboard).sqrt(),
         angle: (-flow_starboard).atan2(-flow_forward),
         flow: (flow_forward, flow_starboard),
     }

@@ -23,7 +23,7 @@ pub fn hull_resistance(params: &BoatParams, surge: f64) -> f64 {
 /// The water flows past at the boat's velocity reversed. Lift is
 /// perpendicular to it and opposes sideslip; drag opposes motion.
 pub fn board_force(params: &BoatParams, surge: f64, sway: f64) -> (f64, f64) {
-    let speed = surge.hypot(sway);
+    let speed = (surge * surge + sway * sway).sqrt();
     if speed < 1e-6 {
         return (0.0, 0.0);
     }
@@ -32,7 +32,13 @@ pub fn board_force(params: &BoatParams, surge: f64, sway: f64) -> (f64, f64) {
     let flow_ratio = surge / params.low_speed_lateral_speed;
     let low_speed_sway = -params.low_speed_lateral_damping * sway / (1.0 + flow_ratio * flow_ratio);
     let alpha = sway.abs().atan2(surge.abs());
-    let (cl, cd) = foil::coefficients(&params.board, alpha);
+    // sin and cos of the angle of attack are just the flow components over its speed.
+    let (cl, cd) = foil::coefficients_sc(
+        &params.board,
+        alpha,
+        sway.abs() / speed,
+        surge.abs() / speed,
+    );
     let q_s = 0.5 * WATER_DENSITY * speed * speed * params.board_area;
 
     let lift_dir = (
@@ -58,7 +64,7 @@ pub fn rudder_force(
     yaw_rate: f64,
 ) -> (f64, f64, f64) {
     let stern_sway = sway - yaw_rate * params.rudder_arm;
-    let speed = surge.hypot(stern_sway);
+    let speed = (surge * surge + stern_sway * stern_sway).sqrt();
     if speed < 1e-6 {
         return (0.0, 0.0, 0.0);
     }
