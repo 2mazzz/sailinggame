@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 sailsim = { path = "../sailsim" }
 sailcourse = { path = "../sailcourse" }
 pyo3 = { version = "0.25", features = ["extension-module"] }
+rayon = "1.10"

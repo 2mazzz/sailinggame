@@ -26,6 +26,8 @@ env -u CONDA_PREFIX VIRTUAL_ENV=$PWD/.venv PATH=$PWD/.venv/bin:$PATH \
 
 Each generation 100 small networks all sail the same freshly drawn random course (8 reach legs, `sailing/courses.py`) in a random wind (8 to 16 m/s, any direction, no gusts); the best boat is also sailed every generation on 10 fixed held-out courses and on the old figure 8 (`held_out` in `training.json`). `--gens-per-map N` keeps each course for N generations in a row (10 gives 1000 courses over 10000 generations). `--fixed` restores the old single course and wind. Each generation (and so each replay) has a different course; the score of the scripted baseline on it is logged as `baseline_score`. Elite boats are re-scored on every new course, so the best score can drop.
 
+`--backend rust` (the default) sails the whole population in parallel inside Rust, about twice as fast per generation as `--backend python`, the one-boat-at-a-time reference; the two give the same outcomes (scores can differ in the last digits). The log records `timing` for every generation. To compare seeds or variants side by side, start separate runs and split the cores with `--workers`, for example three runs with `--workers 2`.
+
 The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %. About 25 s for 100 generations on 8 cores. It writes `training.json` (per-generation best, mean, median, finish and capsize rates, mean finish time, the course, and the scripted baseline for reference) and a `gen_NNNN.json` replay of all boats for checkpoint generations. `web/public/runs/` is not committed; the viewer's Training page reads it.
 
 ## Viewing a run

@@ -12,11 +12,13 @@ recorded runs of checkpoint generations are written as JSON for the viewer.
 import json
 import multiprocessing as mp
 import os
+import time
 from pathlib import Path
 
 import numpy as np
 
 from .courses import random_scenario
+from . import _core
 from .env import OBS_LEN, SailEnv
 
 HIDDEN = 16
@@ -101,6 +103,82 @@ def _baseline(scenario):
     return _episode(None, False, scenario, policy="baseline")
 
 
+def _scenario_args(sc):
+    flat = [float(v) for m in sc["marks"] for v in m]
+    return flat, float(sc["wind_speed"]), float(sc["wind_dir"])
+
+
+class _RustEvaluator:
+    """Sails a batch of episodes inside Rust, in parallel across cores, no Python in the step loop."""
+
+    def __init__(self, workers, time_limit, rudder_limit):
+        self.workers, self.time_limit, self.rudder_limit = workers, time_limit, rudder_limit
+        _init_worker(time_limit, rudder_limit)  # the scripted baseline still runs through the env
+
+    def episodes(self, params, scenarios, record, hints=None):
+        rows = _core.evaluate_episodes(
+            [list(map(float, p)) for p in params],
+            [_scenario_args(sc) for sc in scenarios],
+            self.rudder_limit,
+            self.time_limit,
+            RECORD_EVERY if any(record) else 0,
+            self.workers,
+        )
+        out = []
+        for (score, outcome, t, rudder, sheet, hike, path), rec in zip(rows, record):
+            r = {
+                "score": score,
+                "outcome": outcome,
+                "time": t,
+                "controls": {"rudder": rudder, "sheet": sheet, "hike": hike},
+            }
+            if rec:
+                r["p"] = path
+            out.append(r)
+        return out
+
+    def baseline(self, scenario):
+        return _baseline(scenario)
+
+    def close(self):
+        pass
+
+
+class _PythonEvaluator:
+    """The reference path: one boat at a time through the Gymnasium env, over a process pool."""
+
+    def __init__(self, workers, time_limit, rudder_limit):
+        self.pool = None
+        if workers > 1:
+            self.pool = mp.get_context("spawn").Pool(workers, _init_worker, (time_limit, rudder_limit))
+        else:
+            _init_worker(time_limit, rudder_limit)
+
+    def episodes(self, params, scenarios, record, hints=None):
+        jobs = [(p, rec, sc) for p, sc, rec in zip(params, scenarios, record)]
+        if self.pool is None:
+            return [_evaluate(j) for j in jobs]
+        # One episode at a time to whichever worker is free, the longest expected first.
+        order = sorted(range(len(jobs)), key=lambda i: -(hints[i] if hints is not None else 0.0))
+        out = [None] * len(jobs)
+        for i, r in self.pool.imap_unordered(_indexed, [(i, jobs[i]) for i in order], chunksize=1):
+            out[i] = r
+        return out
+
+    def baseline(self, scenario):
+        return _baseline(scenario) if self.pool is None else self.pool.apply(_baseline, (scenario,))
+
+    def close(self):
+        if self.pool:
+            self.pool.close()
+            self.pool.join()
+
+
+def _indexed(arg):
+    i, job = arg
+    return i, _evaluate(job)
+
+
 # The old course and wind, kept as one held-out check.
 FIGURE_8 = {"marks": SailEnv().course["marks"], "wind_speed": 13.0, "wind_dir": 0.0}
 HELD_OUT = 10
@@ -148,6 +226,7 @@ def run(
     init_scale=0.5,
     randomize=True,
     gens_per_map=1,
+    backend="rust",
 ):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -174,6 +253,7 @@ def run(
             "hidden": HIDDEN,
             "randomize": randomize,
             "gens_per_map": gens_per_map,
+            "backend": backend,
             "wind_speed": probe.wind_speed,
             "wind_dir": probe.wind_dir,
         },
@@ -182,35 +262,56 @@ def run(
         "generations": [],
     }
 
-    pool = None
-    if workers > 1:
-        pool = mp.get_context("spawn").Pool(workers, _init_worker, (time_limit, rudder_limit))
-        evaluate, base = pool.map, pool.map
-    else:
-        _init_worker(time_limit, rudder_limit)
-        evaluate, base = map, map
+    evaluator = (_RustEvaluator if backend == "rust" else _PythonEvaluator)(workers, time_limit, rudder_limit)
+    baselines = {}  # the scripted baseline's score per course, scored once however many generations use it
+
+    def baseline_score(key, scenario):
+        if key not in baselines:
+            baselines[key] = evaluator.baseline(scenario)["score"]
+        return baselines[key]
+
+    def held_out_stats(tests):
+        return {
+            "score": float(np.mean([t["score"] for t in tests[:-1]])),
+            "finish_rate": float(np.mean([t["outcome"] == "finished" for t in tests[:-1]])),
+            "figure8_score": tests[-1]["score"],
+            "figure8_outcome": tests[-1]["outcome"],
+        }
+
+    suite = held_out + [FIGURE_8]
+    pending = None  # (stats, best weights) of the last generation, whose held-out check is still to sail
+    times = None  # each boat's episode time last generation, to order the next batch longest first
     try:
-        baseline = list(base(_baseline, [FIGURE_8]))[0]
+        baseline = evaluator.baseline(FIGURE_8)
         log["baseline"] = {k: baseline[k] for k in ("score", "time", "outcome", "controls")}
         for gen in range(generations):
             record = gen in checkpoints
             # One course and wind for the whole generation, so boats are ranked on equal terms;
             # the same one for `gens_per_map` generations in a row before a new one is drawn.
-            scenario = random_scenario(np.random.default_rng([seed, 2, gen // gens_per_map])) if randomize else FIGURE_8
-            results = list(evaluate(_evaluate, [(p, record, scenario) for p in pop]))
+            map_id = gen // gens_per_map
+            scenario = random_scenario(np.random.default_rng([seed, 2, map_id])) if randomize else FIGURE_8
+            # The previous generation's best boat is tried on the held-out courses in the same batch.
+            extra = suite if pending else []
+            t0 = time.perf_counter()
+            batch = evaluator.episodes(
+                list(pop) + ([pending[1]] * len(extra) if extra else []),
+                [scenario] * len(pop) + extra,
+                [record] * len(pop) + [False] * len(extra),
+                None if times is None else list(times) + [time_limit] * len(extra),
+            )
+            evaluate_s = time.perf_counter() - t0
+            results, tests = batch[: len(pop)], batch[len(pop) :]
+            if pending:
+                pending[0]["held_out"] = held_out_stats(tests)
+                pending[0]["timing"]["held_out_batched"] = True
+                log["generations"].append(pending[0])
             order = np.argsort([-r["score"] for r in results], kind="stable")
             stats = _stats(gen, results)
             stats["wind_speed"], stats["wind_dir"] = scenario["wind_speed"], scenario["wind_dir"]
-            stats["baseline_score"] = list(base(_baseline, [scenario]))[0]["score"]
-            # The best boat on courses it has never seen, and on the old figure 8.
-            tests = list(evaluate(_evaluate, [(pop[order[0]], False, sc) for sc in held_out + [FIGURE_8]]))
-            stats["held_out"] = {
-                "score": float(np.mean([t["score"] for t in tests[:-1]])),
-                "finish_rate": float(np.mean([t["outcome"] == "finished" for t in tests[:-1]])),
-                "figure8_score": tests[-1]["score"],
-                "figure8_outcome": tests[-1]["outcome"],
-            }
-            log["generations"].append(stats)
+            t0 = time.perf_counter()
+            stats["baseline_score"] = baseline_score(map_id, scenario)
+            stats["timing"] = {"evaluate_s": evaluate_s, "baseline_s": time.perf_counter() - t0}
+            pending = (stats, pop[order[0]].copy())
             if record:
                 boats = [
                     {k: results[i][k] for k in ("score", "outcome", "time", "p")} for i in order
@@ -232,15 +333,22 @@ def run(
             )
             # Next generation: keep the elite, fill the rest with mutated good boats.
             ranked = pop[order]
-            children = ranked[rng.integers(0, parents, size=population - elite)]
+            parent = rng.integers(0, parents, size=population - elite)
+            children = ranked[parent]
             # Wide steps early to explore, small ones late to polish.
             step = sigma + (sigma_final - sigma) * gen / max(1, generations - 1)
             children = children + rng.normal(0.0, step, size=children.shape)
+            ranked_times = np.array([results[i]["time"] for i in order])
+            times = np.concatenate([ranked_times[:elite], ranked_times[parent]])
             pop = np.vstack([ranked[:elite], children])
+        # The last generation's held-out check has no next batch to ride along with.
+        pending[0]["held_out"] = held_out_stats(
+            evaluator.episodes([pending[1]] * len(suite), suite, [False] * len(suite))
+        )
+        log["generations"].append(pending[0])
+        (out / "training.json").write_text(json.dumps(log))
     finally:
-        if pool:
-            pool.close()
-            pool.join()
+        evaluator.close()
     return log
 
 
@@ -258,12 +366,13 @@ def main():
     p.add_argument("--rudder-limit", type=float, default=0.4, help="largest rudder as a fraction of full (35 deg)")
     p.add_argument("--time-limit", type=float, default=150.0)
     p.add_argument("--gens-per-map", type=int, default=1, help="generations sailed on each random course before a new one")
+    p.add_argument("--backend", choices=["rust", "python"], default="rust", help="rust sails whole populations in parallel inside Rust; python is the slower reference")
     p.add_argument("--fixed", action="store_true", help="always the figure 8 in a 13 m/s northerly, as before")
     args = p.parse_args()
     log = run(
         args.out, args.population, args.generations, args.workers, args.seed, args.time_limit, args.sigma,
         args.sigma_final,
-        args.rudder_limit, randomize=not args.fixed, gens_per_map=args.gens_per_map,
+        args.rudder_limit, randomize=not args.fixed, gens_per_map=args.gens_per_map, backend=args.backend,
     )
     g = log["generations"][-1]
     print(f"gen {g['gen']}: best {g['best']:.0f}, finish rate {g['finish_rate']:.0%}")
