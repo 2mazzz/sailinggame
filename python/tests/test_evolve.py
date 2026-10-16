@@ -28,9 +28,10 @@ def test_a_run_logs_each_generation_and_records_replays(tmp_path):
     assert log["config"]["rudder_limit"] == 0.4
     assert log["course"]["radius"] == 6.0 and len(log["course"]["marks"]) == 8
     assert log["baseline"]["outcome"] in {"finished", "capsized", "time_limit"}
-    # Elitism: the best score never goes down.
-    best = [g["best"] for g in log["generations"]]
-    assert all(b2 >= b1 - 1e-9 for b1, b2 in zip(best, best[1:]))
+    # Each generation sails its own course and wind, and the best boat is also tried on held-out ones.
+    assert len({(g["wind_speed"], g["wind_dir"]) for g in log["generations"]}) == 4
+    assert 8.0 <= g["wind_speed"] <= 16.0 and 0.0 <= g["wind_dir"] < 360.0
+    assert 0.0 <= g["held_out"]["finish_rate"] <= 1.0 and "figure8_score" in g["held_out"]
     # The first and last generations are checkpoints with one recorded run per boat.
     assert log["checkpoints"][0] == 0 and log["checkpoints"][-1] == 3
     replay = json.loads((out / "gen_0003.json").read_text())

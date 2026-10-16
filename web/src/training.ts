@@ -7,7 +7,7 @@ import { color, css, font, radius, stroke } from "./theme";
 // come from `python -m sailing.evolve` (web/public/runs/<run>/).
 
 const PARAMS = new URLSearchParams(location.search);
-const RUN = PARAMS.get("run") ?? "rudder-0.8-2000";
+const RUN = PARAMS.get("run") ?? "maps-1000x10";
 // ?gen=N picks the nearest checkpoint, ?t=S freezes the replay at S seconds (for screenshots and links).
 const START_GEN = PARAMS.has("gen") ? Number(PARAMS.get("gen")) : 0;
 const FREEZE_T = PARAMS.has("t") ? Number(PARAMS.get("t")) : null;
@@ -19,6 +19,9 @@ interface GenStat {
   gen: number; best: number; mean: number; median: number;
   finish_rate: number; capsize_rate: number; mean_finish_time: number | null;
   best_controls: { rudder: number; sheet: number; hike: number };
+  // Runs with random courses and winds also log the generation's wind, the baseline's score on its course and held-out results.
+  wind_speed?: number; wind_dir?: number; baseline_score?: number;
+  held_out?: { score: number; finish_rate: number; figure8_score: number; figure8_outcome: string };
 }
 interface Log {
   config: { population: number; generations: number; wind_speed: number; wind_dir: number; sigma: number; elite: number };
@@ -28,7 +31,7 @@ interface Log {
   baseline: { score: number; time: number; outcome: string };
 }
 interface Boat { score: number; outcome: string; time: number; n: number; x: Float32Array; y: Float32Array; h: Float32Array; heel: Float32Array }
-interface Replay { gen: number; dt: number; boats: Boat[] }
+interface Replay { gen: number; dt: number; boats: Boat[]; course?: Log["course"]; wind?: { speed: number; dir: number } }
 
 const KN = 1.943844;
 const pad4 = (n: number) => String(n).padStart(4, "0");
@@ -45,7 +48,7 @@ async function loadReplay(gen: number): Promise<Replay> {
     }
     return { score: b.score, outcome: b.outcome, time: b.time, n, x, y, h, heel };
   });
-  return { gen: raw.gen, dt: raw.dt, boats };
+  return { gen: raw.gen, dt: raw.dt, boats, course: raw.course, wind: raw.wind };
 }
 
 function message(text: string) {
@@ -80,14 +83,21 @@ async function main() {
   world.addChild(marksGfx, trails, boatLayer);
   app.stage.addChild(world);
 
-  const marks = log.course.marks;
-  const pts = [[0, 0], ...marks];
-  const minX = Math.min(...pts.map((p) => p[0])), maxX = Math.max(...pts.map((p) => p[0]));
-  const minY = Math.min(...pts.map((p) => p[1])), maxY = Math.max(...pts.map((p) => p[1]));
+  // The course on screen: the replay's own when the run drew one per generation, else the run's.
+  let course = log.course;
+  let marks = course.marks;
+  let minX = 0, maxX = 0, minY = 0, maxY = 0;
+  const fitBounds = () => {
+    marks = course.marks;
+    const pts = [[0, 0], ...marks];
+    minX = Math.min(...pts.map((p) => p[0])); maxX = Math.max(...pts.map((p) => p[0]));
+    minY = Math.min(...pts.map((p) => p[1])); maxY = Math.max(...pts.map((p) => p[1]));
+  };
+  fitBounds();
   let ppm = 5; // pixels per metre, refit on resize
   const layout = () => {
     const w = Math.max(200, app.screen.width - PANEL_W), h = Math.max(200, app.screen.height - 150 - 80);
-    const bw = maxX - minX + 4 * log.course.radius, bh = maxY - minY + 4 * log.course.radius;
+    const bw = maxX - minX + 4 * course.radius, bh = maxY - minY + 4 * course.radius;
     ppm = Math.min(w / bw, h / bh);
     world.scale.set(ppm, -ppm); // y north is up
     world.position.set(w / 2 - ((minX + maxX) / 2) * ppm, 150 + h / 2 + ((minY + maxY) / 2) * ppm);
@@ -97,7 +107,7 @@ async function main() {
 
   const drawMarks = () => {
     marksGfx.clear();
-    const r = log.course.radius;
+    const r = course.radius;
     marks.forEach(([mx, my]) => {
       marksGfx.circle(mx, my, r).fill({ color: color.mark, alpha: 0.12 }).stroke({ width: 1.5 / ppm, color: color.mark, alpha: 0.8 });
       marksGfx.circle(mx, my, 9 / ppm).fill(color.mark).stroke({ width: stroke.outline / ppm, color: color.ink });
@@ -128,6 +138,9 @@ async function main() {
     boatGfx = r.boats.map((_, i) => makeBoat(i === 0));
     [...boatGfx].reverse().forEach((g) => boatLayer.addChild(g));
     if (FREEZE_T === null || !frozenApplied) { t = FREEZE_T ?? 0; frozenApplied = true; } else t = 0;
+    course = r.course ?? log.course;
+    fitBounds();
+    layout();
     drawMarks();
     updateInfo();
   };
@@ -204,7 +217,10 @@ async function main() {
   charts.forEach((ch) => panel.appendChild(ch.card));
   document.body.appendChild(panel);
 
-  const windText = `wind ${(c.wind_speed * KN).toFixed(0)} kn from ${c.wind_dir.toFixed(0)}°`;
+  const windText = () => {
+    const w = replay?.wind ?? { speed: c.wind_speed, dir: c.wind_dir };
+    return `wind ${(w.speed * KN).toFixed(0)} kn from ${w.dir.toFixed(0)}°`;
+  };
   let current = 0;
   const updateInfo = () => {
     const g = gens[current];
@@ -212,7 +228,7 @@ async function main() {
     const done = boats.filter((b) => b.outcome === "finished").length;
     const cap = boats.filter((b) => b.outcome === "capsized").length;
     info.innerHTML = `<div style="font:600 24px ${font.display}">Generation ${g.gen}</div>
-      <div style="font:500 12px/1.6 ${font.mono}">${boats.length || c.population} boats: ${done} finished, ${cap} capsized<br>best ${g.best.toFixed(0)} (baseline ${log.baseline.score.toFixed(0)})<br>${windText}<br>time ${t.toFixed(0)} s</div>`;
+      <div style="font:500 12px/1.6 ${font.mono}">${boats.length || c.population} boats: ${done} finished, ${cap} capsized<br>best ${g.best.toFixed(0)} (baseline ${(g.baseline_score ?? log.baseline.score).toFixed(0)})<br>${windText()}${g.held_out ? `<br>held-out ${g.held_out.score.toFixed(0)}, ${(g.held_out.finish_rate * 100).toFixed(0)}% finish` : ""}<br>time ${t.toFixed(0)} s</div>`;
     sliderLabel.textContent = `gen ${g.gen}`;
     charts.forEach((ch) => ch.setGeneration(g.gen));
   };

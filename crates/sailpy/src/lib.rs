@@ -4,13 +4,14 @@
 
 use pyo3::prelude::*;
 use sailcourse::observation::course_observation;
-use sailcourse::{default_course, CourseRun, Outcome};
+use sailcourse::{default_course, Course, CourseRun, Mark, Outcome, DEFAULT_MARK_RADIUS};
 use sailsim::{Controls, Scenario, Sim, SimConfig};
 
 #[pyclass]
 struct Core {
     run: CourseRun,
     scenario: Scenario,
+    course: Course,
     capsize_enabled: bool,
     fixed_heading: bool,
     gust: f64,
@@ -31,7 +32,7 @@ impl Core {
             shift_intensity: self.shift,
             ..SimConfig::default()
         });
-        let mut run = CourseRun::new(sim, default_course());
+        let mut run = CourseRun::new(sim, self.course.clone());
         run.reset(self.scenario);
         run
     }
@@ -69,6 +70,7 @@ impl Core {
         let mut core = Core {
             run: CourseRun::new(Sim::new(SimConfig::default()), default_course()),
             scenario,
+            course: default_course(),
             capsize_enabled,
             fixed_heading,
             gust,
@@ -83,7 +85,29 @@ impl Core {
     }
 
     /// Start a new episode with this seed (it drives gusts and shifts); returns the observation.
-    fn reset(&mut self, seed: u64) -> Vec<f64> {
+    /// `marks` (flat x, y pairs), `wind_speed` and `wind_dir_deg` replace the course and wind
+    /// from now on; the boat starts from rest on a beam reach to whatever wind results.
+    #[pyo3(signature = (seed, marks=None, wind_speed=None, wind_dir_deg=None))]
+    fn reset(
+        &mut self,
+        seed: u64,
+        marks: Option<Vec<f64>>,
+        wind_speed: Option<f64>,
+        wind_dir_deg: Option<f64>,
+    ) -> Vec<f64> {
+        if let Some(flat) = marks {
+            self.course = Course {
+                marks: flat.chunks_exact(2).map(|p| Mark { x: p[0], y: p[1] }).collect(),
+                mark_radius: DEFAULT_MARK_RADIUS,
+            };
+        }
+        if let Some(speed) = wind_speed {
+            self.scenario.true_wind_speed = speed;
+        }
+        if let Some(dir) = wind_dir_deg {
+            self.scenario.true_wind_dir = dir.to_radians();
+            self.scenario.start_heading = (dir + 90.0).to_radians();
+        }
         self.run = self.build(seed);
         self.time = 0.0;
         course_observation(&self.run).to_vec()

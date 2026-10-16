@@ -64,3 +64,32 @@ fn the_default_course_is_the_tight_figure_eight() {
     assert_eq!(c.marks.len(), 8);
     assert_eq!(c.mark_radius, 6.0);
 }
+
+#[test]
+fn the_mark_after_next_is_seen_relative_to_the_heading() {
+    // Next mark 100 m north, the one after due east of the boat: 90 degrees to starboard.
+    let course = Course {
+        marks: vec![Mark { x: 0.0, y: 100.0 }, Mark { x: 100.0, y: 0.0 }],
+        mark_radius: 6.0,
+    };
+    let mut run = CourseRun::new(Sim::new(SimConfig::default()), course);
+    run.reset(Scenario {
+        true_wind_speed: 6.0,
+        true_wind_dir: 0.0,
+        start_x: 0.0,
+        start_y: 0.0,
+        start_heading: 0.0,
+        start_speed: 0.0,
+        start_heel: 0.0,
+    });
+    let obs = course_observation(&run);
+    assert!((obs[12] - 1.0).abs() < 1e-9, "sin {}", obs[12]);
+    assert!(obs[13].abs() < 1e-9, "cos {}", obs[13]);
+}
+
+#[test]
+fn on_the_last_leg_the_mark_after_next_is_the_next_mark() {
+    let obs = course_observation(&run_heading(0.0));
+    assert!(obs[12].abs() < 1e-9);
+    assert!((obs[13] - 1.0).abs() < 1e-9);
+}

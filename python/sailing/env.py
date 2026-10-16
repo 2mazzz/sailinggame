@@ -14,7 +14,10 @@ OBS_LEN = Core.obs_len()
 
 
 class SailEnv(gym.Env):
-    """Actions are in [-1, 1]: rudder, sheet (mapped to 0..1 trim) and, when
+    """Reset takes `options={"marks": [(x, y), ...], "wind_speed": m/s, "wind_dir": degrees}`
+    to change the course or wind; the boat starts from rest on a beam reach.
+
+    Actions are in [-1, 1]: rudder, sheet (mapped to 0..1 trim) and, when
     `hike=True`, hike (mapped to 0..1 lean). One step is `frame_skip` sim steps
     (0.02 s each), so the default is a decision every 0.1 s.
 
@@ -78,7 +81,16 @@ class SailEnv(gym.Env):
         super().reset(seed=seed)
         # An unseeded reset still draws from the env's own generator, so runs stay reproducible per env.
         run_seed = int(self.np_random.integers(0, 2**32))
-        obs = self._core.reset(run_seed)
+        # `options` may carry "marks" (list of (x, y)), "wind_speed" and "wind_dir" (degrees);
+        # whatever is given stays in force for later resets.
+        options = options or {}
+        marks = options.get("marks")
+        flat = None if marks is None else [float(v) for m in marks for v in m]
+        obs = self._core.reset(run_seed, flat, options.get("wind_speed"), options.get("wind_dir"))
+        if "wind_speed" in options:
+            self.wind_speed = options["wind_speed"]
+        if "wind_dir" in options:
+            self.wind_dir = options["wind_dir"]
         return np.asarray(obs, dtype=np.float32), self._info()
 
     def step(self, action):

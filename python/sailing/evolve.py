@@ -1,8 +1,11 @@
 """Evolve a population of small neural-net sailors on the course.
 
-Each generation every boat sails the course once; the best few are kept as they
-are (elitism, so the best score never drops) and the rest of the next
-generation are mutated copies of good boats. Per-generation statistics and the
+Each generation every boat sails the same freshly drawn random course in a random
+wind (see `courses`); the best few are kept as they are (elitism, and they are
+re-scored on the next course, so only boats that hold up stay on top) and the
+rest of the next generation are mutated copies of good boats. Every generation
+the best boat is also sailed on a fixed held-out set of random courses and on the
+old figure 8. Per-generation statistics and the
 recorded runs of checkpoint generations are written as JSON for the viewer.
 """
 
@@ -13,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 
+from .courses import random_scenario
 from .env import OBS_LEN, SailEnv
 
 HIDDEN = 16
@@ -51,10 +55,10 @@ def _pack(info, out):
     ]
 
 
-def _episode(params, record, policy=None):
+def _episode(params, record, scenario=None, policy=None):
     """Sail one episode; returns its summary and, when asked, the recorded path."""
     env = _env
-    obs, info = env.reset(seed=0)
+    obs, info = env.reset(seed=0, options=scenario)
     path = []
     if record:
         _pack(info, path)
@@ -89,12 +93,17 @@ def _episode(params, record, policy=None):
 
 
 def _evaluate(args):
-    params, record = args
-    return _episode(params, record)
+    params, record, scenario = args
+    return _episode(params, record, scenario)
 
 
-def _baseline(_):
-    return _episode(None, False, policy="baseline")
+def _baseline(scenario):
+    return _episode(None, False, scenario, policy="baseline")
+
+
+# The old course and wind, kept as one held-out check.
+FIGURE_8 = {"marks": SailEnv().course["marks"], "wind_speed": 13.0, "wind_dir": 0.0}
+HELD_OUT = 10
 
 
 def _stats(gen, results):
@@ -116,7 +125,9 @@ def _stats(gen, results):
 
 def checkpoint_gens(generations):
     """Early generations densely, later ones sparsely, always the last."""
-    picks = {0, 1, 2, 3, 5, 8, 12, 18, 25, 35, 50, 70, 100, 140, 200, 280, 400, 560, 800, 1100, 1500}
+    picks = {0, 1, 2, 3, 5, 8, 12, 18, 25, 35, 50, 70, 100, 140, 200, 280, 350, 450, 560, 700, 850, 1000, 1250, 1500, 1750}
+    picks |= set(range(100, 2000, 100))  # then every 100th
+    picks |= set(range(2000, generations, 500))  # and every 500th once runs get long
     gens = {g for g in picks if g < generations}
     gens.add(generations - 1)
     return sorted(gens)
@@ -135,6 +146,8 @@ def run(
     elite_fraction=0.1,
     parent_fraction=0.3,
     init_scale=0.5,
+    randomize=True,
+    gens_per_map=1,
 ):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -147,6 +160,7 @@ def run(
     pop = rng.normal(0.0, init_scale, size=(population, PARAM_COUNT))
     probe = SailEnv(time_limit=time_limit, hike=True, rudder_limit=rudder_limit)
     course = probe.course
+    held_out = [random_scenario(np.random.default_rng([seed, 1, i])) for i in range(HELD_OUT)]
     log = {
         "config": {
             "population": population,
@@ -158,6 +172,8 @@ def run(
             "elite": elite,
             "time_limit": time_limit,
             "hidden": HIDDEN,
+            "randomize": randomize,
+            "gens_per_map": gens_per_map,
             "wind_speed": probe.wind_speed,
             "wind_dir": probe.wind_dir,
         },
@@ -174,19 +190,41 @@ def run(
         _init_worker(time_limit, rudder_limit)
         evaluate, base = map, map
     try:
-        baseline = list(base(_baseline, [0]))[0]
+        baseline = list(base(_baseline, [FIGURE_8]))[0]
         log["baseline"] = {k: baseline[k] for k in ("score", "time", "outcome", "controls")}
         for gen in range(generations):
             record = gen in checkpoints
-            results = list(evaluate(_evaluate, [(p, record) for p in pop]))
+            # One course and wind for the whole generation, so boats are ranked on equal terms;
+            # the same one for `gens_per_map` generations in a row before a new one is drawn.
+            scenario = random_scenario(np.random.default_rng([seed, 2, gen // gens_per_map])) if randomize else FIGURE_8
+            results = list(evaluate(_evaluate, [(p, record, scenario) for p in pop]))
             order = np.argsort([-r["score"] for r in results], kind="stable")
-            log["generations"].append(_stats(gen, results))
+            stats = _stats(gen, results)
+            stats["wind_speed"], stats["wind_dir"] = scenario["wind_speed"], scenario["wind_dir"]
+            stats["baseline_score"] = list(base(_baseline, [scenario]))[0]["score"]
+            # The best boat on courses it has never seen, and on the old figure 8.
+            tests = list(evaluate(_evaluate, [(pop[order[0]], False, sc) for sc in held_out + [FIGURE_8]]))
+            stats["held_out"] = {
+                "score": float(np.mean([t["score"] for t in tests[:-1]])),
+                "finish_rate": float(np.mean([t["outcome"] == "finished" for t in tests[:-1]])),
+                "figure8_score": tests[-1]["score"],
+                "figure8_outcome": tests[-1]["outcome"],
+            }
+            log["generations"].append(stats)
             if record:
                 boats = [
                     {k: results[i][k] for k in ("score", "outcome", "time", "p")} for i in order
                 ]
                 (out / f"gen_{gen:04d}.json").write_text(
-                    json.dumps({"gen": gen, "dt": 0.1 * RECORD_EVERY, "boats": boats})
+                    json.dumps(
+                        {
+                            "gen": gen,
+                            "dt": 0.1 * RECORD_EVERY,
+                            "course": {"marks": scenario["marks"], "radius": course["radius"]},
+                            "wind": {"speed": scenario["wind_speed"], "dir": scenario["wind_dir"]},
+                            "boats": boats,
+                        }
+                    )
                 )
             (out / "training.json").write_text(json.dumps(log))
             (out / "best.json").write_text(
@@ -219,11 +257,13 @@ def main():
     p.add_argument("--sigma-final", type=float, default=0.03)
     p.add_argument("--rudder-limit", type=float, default=0.4, help="largest rudder as a fraction of full (35 deg)")
     p.add_argument("--time-limit", type=float, default=150.0)
+    p.add_argument("--gens-per-map", type=int, default=1, help="generations sailed on each random course before a new one")
+    p.add_argument("--fixed", action="store_true", help="always the figure 8 in a 13 m/s northerly, as before")
     args = p.parse_args()
     log = run(
         args.out, args.population, args.generations, args.workers, args.seed, args.time_limit, args.sigma,
         args.sigma_final,
-        args.rudder_limit,
+        args.rudder_limit, randomize=not args.fixed, gens_per_map=args.gens_per_map,
     )
     g = log["generations"][-1]
     print(f"gen {g['gen']}: best {g['best']:.0f}, finish rate {g['finish_rate']:.0%}")
