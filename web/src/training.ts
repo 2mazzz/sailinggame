@@ -200,11 +200,11 @@ async function main() {
       checkpoints: log.checkpoints, onPick: (g) => pickGeneration(g),
     }),
     lineChart({
-      title: "Controls the best boat uses",
+      title: `Controls the best boat uses${avg}`,
       series: [
-        { name: "rudder", values: gens.map((g) => g.best_controls.rudder * 100), color: color.ink, width: 2.5 },
-        { name: "sheet range", values: gens.map((g) => g.best_controls.sheet * 100), color: 0x2a8f84, width: 2.5 },
-        { name: "hike", values: gens.map((g) => g.best_controls.hike * 100), color: 0x8a8794, width: 2.5 },
+        { name: "rudder", values: gens.map((g) => g.best_controls.rudder * 100), color: color.ink, width: 2.5, smooth: w },
+        { name: "sheet range", values: gens.map((g) => g.best_controls.sheet * 100), color: 0x2a8f84, width: 2.5, smooth: w },
+        { name: "hike", values: gens.map((g) => g.best_controls.hike * 100), color: 0x8a8794, width: 2.5, smooth: w },
       ],
       yMin: 0, yMax: 100, unit: "%",
       checkpoints: log.checkpoints, onPick: (g) => pickGeneration(g),
