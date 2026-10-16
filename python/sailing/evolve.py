@@ -197,6 +197,7 @@ def _stats(gen, results):
         "finish_rate": len(finished) / n,
         "capsize_rate": sum(r["outcome"] == "capsized" for r in results) / n,
         "mean_finish_time": float(np.mean(finished)) if finished else None,
+        "fastest_finish_time": float(min(finished)) if finished else None,
         "best_controls": top["controls"],
     }
 

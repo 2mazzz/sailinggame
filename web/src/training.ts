@@ -18,6 +18,7 @@ const HOLD_S = 2; // pause on the final frame before looping
 interface GenStat {
   gen: number; best: number; mean: number; median: number;
   finish_rate: number; capsize_rate: number; mean_finish_time: number | null;
+  fastest_finish_time?: number | null; // absent from runs made before it was logged
   best_controls: { rudder: number; sheet: number; hike: number };
   // Runs with random courses and winds also log the generation's wind, the baseline's score on its course and held-out results.
   wind_speed?: number; wind_dir?: number; baseline_score?: number;
@@ -208,7 +209,7 @@ async function main() {
     }),
     lineChart({
       title: "Finish time",
-      series: [{ name: "mean of finishers", values: gens.map((g) => g.mean_finish_time), color: color.ink, width: 3 }],
+      series: [{ name: "fastest finisher", values: gens.map((g) => g.fastest_finish_time ?? null), color: color.ink, width: 3 }],
       reference: { name: "baseline", value: log.baseline.time },
       unit: " s",
       checkpoints: log.checkpoints, onPick: (g) => pickGeneration(g),
