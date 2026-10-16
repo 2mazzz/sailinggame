@@ -74,8 +74,8 @@ export function lineChart(opts: ChartOptions) {
   }
   svg.append(el("line", { x1: ML, x2: W - MR, y1: H - MB, y2: H - MB, stroke: css(color.ink), "stroke-width": 1.5 }));
   for (const g of opts.checkpoints) svg.append(el("circle", { cx: x(g), cy: H - MB, r: 2.5, fill: css(color.card), stroke: css(color.ink), "stroke-width": 1.5 }));
-  svg.append(el("text", { x: ML, y: H - 6, "font-size": 10, "font-family": font.mono, fill: css(color.ink) }, "gen 0"));
-  svg.append(el("text", { x: W - MR, y: H - 6, "text-anchor": "end", "font-size": 10, "font-family": font.mono, fill: css(color.ink) }, `gen ${n - 1}`));
+  svg.append(el("text", { x: ML, y: H - 6, "font-size": 10, "font-family": font.mono, fill: css(color.ink) }, "gen 1"));
+  svg.append(el("text", { x: W - MR, y: H - 6, "text-anchor": "end", "font-size": 10, "font-family": font.mono, fill: css(color.ink) }, `gen ${n}`));
   if (opts.reference) {
     svg.append(el("line", { x1: ML, x2: W - MR, y1: y(opts.reference.value), y2: y(opts.reference.value), stroke: css(color.ink), "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
   }

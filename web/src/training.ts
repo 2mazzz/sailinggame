@@ -8,8 +8,8 @@ import { color, css, font, radius, stroke } from "./theme";
 
 const PARAMS = new URLSearchParams(location.search);
 const RUN = PARAMS.get("run") ?? "maps-1000x10";
-// ?gen=N picks the nearest checkpoint, ?t=S freezes the replay at S seconds (for screenshots and links).
-const START_GEN = PARAMS.has("gen") ? Number(PARAMS.get("gen")) : 0;
+// ?gen=N (counting from 1) picks the nearest checkpoint, ?t=S freezes the replay at S seconds (for screenshots and links).
+const START_GEN = PARAMS.has("gen") ? Number(PARAMS.get("gen")) - 1 : 0; // shown 1-based, stored 0-based
 const FREEZE_T = PARAMS.has("t") ? Number(PARAMS.get("t")) : null;
 const PANEL_W = 400;
 const TRAIL_S = 12; // seconds of wake kept behind each boat
@@ -228,9 +228,9 @@ async function main() {
     const boats = replay?.boats ?? [];
     const done = boats.filter((b) => b.outcome === "finished").length;
     const cap = boats.filter((b) => b.outcome === "capsized").length;
-    info.innerHTML = `<div style="font:600 24px ${font.display}">Generation ${g.gen}</div>
+    info.innerHTML = `<div style="font:600 24px ${font.display}">Generation ${g.gen + 1}</div>
       <div style="font:500 12px/1.6 ${font.mono}">${boats.length || c.population} boats: ${done} finished, ${cap} capsized<br>best ${g.best.toFixed(0)} (baseline ${(g.baseline_score ?? log.baseline.score).toFixed(0)})<br>${windText()}${g.held_out ? `<br>held-out ${g.held_out.score.toFixed(0)}, ${(g.held_out.finish_rate * 100).toFixed(0)}% finish` : ""}<br>time ${t.toFixed(0)} s</div>`;
-    sliderLabel.textContent = `gen ${g.gen}`;
+    sliderLabel.textContent = `gen ${g.gen + 1}`;
     charts.forEach((ch) => ch.setGeneration(g.gen));
   };
 

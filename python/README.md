@@ -32,4 +32,4 @@ The best 10 % carry over unchanged and the rest are mutated copies of the best 3
 
 ## Viewing a run
 
-`npm run dev` in `web/`, then open `/training.html` (or `/training.html?run=NAME&gen=99&t=40` to freeze the replay at generation 99, second 40). The page shows the score, finish and capsize rate and finish time per generation, and replays every boat of a checkpoint generation at once as ghosts with wakes. Click or drag on a graph, drag the slider, or use the left and right arrow keys to move between checkpoint generations; Space pauses.
+`npm run dev` in `web/`, then open `/training.html` (or `/training.html?run=NAME&gen=99&t=40` to freeze the replay at generation 99, second 40; generations count from 1). The page shows the score, finish and capsize rate and finish time per generation, and replays every boat of a checkpoint generation at once as ghosts with wakes. Click or drag on a graph, drag the slider, or use the left and right arrow keys to move between checkpoint generations; Space pauses.

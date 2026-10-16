@@ -31,7 +31,7 @@ def smooth(v, w=200):
 
 def learning(log, out):
     g = log["generations"]
-    x = [s["gen"] for s in g]
+    x = [s["gen"] + 1 for s in g]
     fig, ax = plt.subplots(1, 2, figsize=(11, 3.8))
     for s, c, label in (("finish_rate", BLUE, "whole population, course being trained on"),):
         ax[0].plot(x, smooth([r[s] for r in g]) * 100, color=c, label=label)
