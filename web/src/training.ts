@@ -82,7 +82,9 @@ async function main() {
   const trails = new Graphics();
   const boatLayer = new Container();
   world.addChild(marksGfx, trails, boatLayer);
-  app.stage.addChild(world);
+  // Wave squiggles drifting downwind, in screen space behind the world.
+  const water = new Graphics();
+  app.stage.addChild(water, world);
 
   // The course on screen: the replay's own when the run drew one per generation, else the run's.
   let course = log.course;
@@ -144,6 +146,7 @@ async function main() {
     layout();
     drawMarks();
     updateInfo();
+    updateGauge();
   };
 
   // ----- DOM: info card, controls, graphs -----
@@ -220,9 +223,25 @@ async function main() {
   charts.forEach((ch) => panel.appendChild(ch.card));
   document.body.appendChild(panel);
 
+  const currentWind = () => replay?.wind ?? { speed: c.wind_speed, dir: c.wind_dir };
   const windText = () => {
-    const w = replay?.wind ?? { speed: c.wind_speed, dir: c.wind_dir };
+    const w = currentWind();
     return `wind ${(w.speed * KN).toFixed(0)} kn from ${w.dir.toFixed(0)}°`;
+  };
+
+  // Wind gauge, top right of the water: a yellow dial with an ink arrow pointing where the wind blows to (north is up).
+  const gauge = document.createElement("div");
+  gauge.style.cssText = card(`position:fixed;right:${PANEL_W + 12}px;top:12px;padding:8px 14px 8px 8px;display:flex;align-items:center;gap:10px`);
+  const q = (f: string) => f.replace(/"/g, "'"); // font stacks have double quotes, which would end an attribute
+  gauge.innerHTML = `<svg width="56" height="56" viewBox="-28 -28 56 56"><circle r="25" fill="${css(color.signal)}" stroke="${css(color.ink)}" stroke-width="${stroke.outline}"/><text y="-14" text-anchor="middle" font-size="8" font-family="${q(font.mono)}" fill="${css(color.ink)}">N</text><polygon id="wind-arrow" points="0,-17 9,10 0,5 -9,10" fill="${css(color.ink)}"/></svg>
+    <div style="font:500 12px/1.4 ${q(font.mono)}"><div id="wind-kn" style="font:600 22px ${q(font.display)}"></div>wind <span id="wind-from"></span></div>`;
+  document.body.appendChild(gauge);
+  const windArrow = gauge.querySelector("#wind-arrow") as SVGElement;
+  const updateGauge = () => {
+    const w = currentWind();
+    windArrow.setAttribute("transform", `rotate(${w.dir + 180})`); // blows toward the opposite of where it comes from
+    gauge.querySelector("#wind-kn")!.textContent = `${(w.speed * KN).toFixed(0)} kn`;
+    gauge.querySelector("#wind-from")!.textContent = `from ${w.dir.toFixed(0)}°`;
   };
   let current = 0;
   const updateInfo = () => {
@@ -265,7 +284,31 @@ async function main() {
   // ----- animation -----
   const duration = () => (replay ? Math.max(...replay.boats.map((b) => (b.n - 1) * replay!.dt)) : 0);
   let infoClock = 0;
+  const WAVE_GRID = 90, WAVE_PX_PER_MS = 5; // squiggle spacing in px, drift in px per m/s of wind per second
+  let waveClock = 0;
+  const drawWaves = () => {
+    const { width, height } = app.screen;
+    const w = currentWind();
+    const rot = ((w.dir + 180) * Math.PI) / 180; // the way the wind blows, clockwise from up
+    const dx = Math.sin(rot), dy = -Math.cos(rot); // downwind on screen
+    const ox = dx * w.speed * WAVE_PX_PER_MS * waveClock, oy = dy * w.speed * WAVE_PX_PER_MS * waveClock;
+    const cos = dx, sin = dy; // squiggles lie along the wind
+    water.clear();
+    for (let gx = Math.floor(-ox / WAVE_GRID) - 1; gx <= Math.ceil((width - ox) / WAVE_GRID); gx++) {
+      for (let gy = Math.floor(-oy / WAVE_GRID) - 1; gy <= Math.ceil((height - oy) / WAVE_GRID); gy++) {
+        const h = Math.sin(gx * 127.1 + gy * 311.7) * 43758.5453;
+        const r1 = h - Math.floor(h), r2 = Math.abs(Math.sin(h * 7.3));
+        const px = (gx + r1) * WAVE_GRID + ox, py = (gy + r2) * WAVE_GRID + oy;
+        const at = (u: number, v: number) => [px + u * cos - v * sin, py + u * sin + v * cos] as const; // u along the wind, v across
+        const [x0, y0] = at(0, 0), [x1, y1] = at(9, -7), [x2, y2] = at(18, 0), [x3, y3] = at(27, 7), [x4, y4] = at(36, 0);
+        water.moveTo(x0, y0).quadraticCurveTo(x1, y1, x2, y2).quadraticCurveTo(x3, y3, x4, y4);
+      }
+    }
+    water.stroke({ width: 3, color: color.waterWave, cap: "round" });
+  };
   app.ticker.add((ticker) => {
+    if (playing) waveClock += ticker.deltaMS / 1000 * speed;
+    drawWaves();
     if (!replay) return;
     if (playing) t += (ticker.deltaMS / 1000) * speed;
     const end = duration();
