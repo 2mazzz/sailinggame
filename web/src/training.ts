@@ -1,5 +1,5 @@
 import { Application, Container, Graphics } from "pixi.js";
-import { lineChart } from "./charts";
+import { autoWindow, lineChart } from "./charts";
 import { color, css, font, radius, stroke } from "./theme";
 
 // Training page: graphs of an evolution run next to a replay of one generation,
@@ -178,20 +178,22 @@ async function main() {
   panel.appendChild(head);
 
   const gens = log.generations;
+  const w = autoWindow(gens.length); // rolling-average window for the noisy graphs
+  const avg = w > 1 ? ` (${w}-gen average)` : "";
   const charts = [
     lineChart({
-      title: "Score",
+      title: `Score${avg}`,
       series: [
-        { name: "best", values: gens.map((g) => g.best), color: color.ink, width: 3 },
-        { name: "mean", values: gens.map((g) => g.mean), color: color.waterWave, width: 2.5 },
+        { name: "best", values: gens.map((g) => g.best), color: color.ink, width: 3, smooth: w },
+        { name: "mean", values: gens.map((g) => g.mean), color: color.waterWave, width: 2.5, smooth: w },
       ],
       reference: { name: "scripted baseline", value: log.baseline.score },
       checkpoints: log.checkpoints, onPick: (g) => pickGeneration(g),
     }),
     lineChart({
-      title: "Finish and capsize rate",
+      title: `Finish and capsize rate`,
       series: [
-        { name: "finished", values: gens.map((g) => g.finish_rate * 100), color: color.ink, width: 3 },
+        { name: w > 1 ? `finished (${w}-gen avg)` : "finished", values: gens.map((g) => g.finish_rate * 100), color: color.ink, width: 3, smooth: w },
         { name: "capsized", values: gens.map((g) => g.capsize_rate * 100), color: color.heel, width: 2.5 },
       ],
       yMin: 0, yMax: 100, unit: "%",

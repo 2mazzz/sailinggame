@@ -5,6 +5,24 @@ export interface Series {
   values: (number | null)[]; // one per generation
   color: number;
   width?: number;
+  /** Draw a centred rolling mean over this many generations as the line, with the raw values faint behind it. */
+  smooth?: number;
+}
+
+/** A window that leaves a run's graph readable however long it is: about a fortieth of it. */
+export const autoWindow = (generations: number) => Math.max(1, Math.round(generations / 40));
+
+/** Centred rolling mean; the window shrinks at the ends and gaps (null) are skipped. */
+function rollingMean(values: (number | null)[], window: number): (number | null)[] {
+  const half = Math.floor(window / 2);
+  return values.map((_, i) => {
+    let sum = 0, count = 0;
+    for (let j = Math.max(0, i - half); j <= Math.min(values.length - 1, i + half); j++) {
+      const v = values[j];
+      if (v !== null) { sum += v; count++; }
+    }
+    return count ? sum / count : null;
+  });
 }
 
 export interface ChartOptions {
@@ -41,9 +59,15 @@ function niceTicks(min: number, max: number, count = 3): number[] {
 }
 
 /** A cream card holding a titled line chart; `setGeneration` moves the marker. */
-export function lineChart(opts: ChartOptions) {
+export function lineChart(options: ChartOptions) {
+  // A smoothed series keeps its raw values for the faint line; the line and marker use the mean.
+  const raw = options.series.map((s) => (s.smooth && s.smooth > 1 ? s.values : null));
+  const opts = {
+    ...options,
+    series: options.series.map((s) => (s.smooth && s.smooth > 1 ? { ...s, values: rollingMean(s.values, s.smooth) } : s)),
+  };
   const n = Math.max(...opts.series.map((s) => s.values.length));
-  const all = opts.series.flatMap((s) => s.values.filter((v): v is number => v !== null));
+  const all = opts.series.flatMap((s, i) => (raw[i] ?? s.values).filter((v): v is number => v !== null));
   if (opts.reference) all.push(opts.reference.value);
   const lo = opts.yMin ?? Math.min(...all), hi = opts.yMax ?? Math.max(...all);
   const pad = opts.yMin === undefined || opts.yMax === undefined ? (hi - lo) * 0.05 : 0;
@@ -79,11 +103,17 @@ export function lineChart(opts: ChartOptions) {
   if (opts.reference) {
     svg.append(el("line", { x1: ML, x2: W - MR, y1: y(opts.reference.value), y2: y(opts.reference.value), stroke: css(color.ink), "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
   }
-  for (const s of opts.series) {
-    const pts = s.values
+  const polyline = (values: (number | null)[]) =>
+    values
       .map((v, g) => (v === null ? "" : `${x(g).toFixed(1)},${y(v).toFixed(1)}`))
       .filter(Boolean)
       .join(" ");
+  opts.series.forEach((s, i) => {
+    const faint = raw[i];
+    if (faint) svg.append(el("polyline", { points: polyline(faint), fill: "none", stroke: css(s.color), "stroke-width": 1, "stroke-opacity": 0.3, "stroke-linejoin": "round" }));
+  });
+  for (const s of opts.series) {
+    const pts = polyline(s.values);
     svg.append(el("polyline", { points: pts, fill: "none", stroke: css(s.color), "stroke-width": s.width ?? 2.5, "stroke-linejoin": "round", "stroke-linecap": "round" }));
   }
   const marker = el("line", { y1: MT, y2: H - MB, stroke: css(color.ink), "stroke-width": 1.5 });
