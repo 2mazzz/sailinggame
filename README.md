@@ -109,3 +109,7 @@ Regenerate the figures above from a finished run:
     --force-device-scale-factor=2 --window-size=1500,950 --virtual-time-budget=15000 \
     --screenshot=docs/img/midrun.png "http://localhost:5173/training.html?run=maps-1000x10&gen=3000&t=30"
 ```
+
+## License
+
+[MIT](LICENSE)
