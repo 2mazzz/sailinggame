@@ -26,7 +26,7 @@ The yellow line is the apparent wind, the arrow around the boat points to the ne
 ## What it does
 
 - Each boat is a 16-unit network that reads 34 inputs (boat state, and every mark still to round) and outputs rudder, sheet and hike (leaning out).
-- Every generation all 100 boats sail the same 8 freshly drawn random courses (8 legs each), each in its own random wind (8 to 16 m/s, any direction), and a boat is scored on its mean. The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %. The run is 10,000 generations, so 80,000 courses. It was trained in two stretches of 5,000: the second restarted from the best boat of the first (see the step size below).
+- Every generation all 100 boats sail the same 8 freshly drawn random courses (8 legs each), each in its own random wind (8 to 16 m/s, any direction), and a boat is scored on its mean. The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %. The run is 10,000 generations, trained in two stretches of 5,000. The second restarted from the best boat of the first and, with the same seed, sails the same 5,000 sets of courses again, so there are 40,000 distinct courses, each seen twice.
 - Score rewards progress, mark bonuses and a fast finish, and charges a time cost and a capsize penalty. The rudder has its full deflection (`--rudder-limit` can cap it).
 
 ## The boat
@@ -53,7 +53,7 @@ There is no gradient and no value function. The learner is a plain evolution str
 - **Policy:** 34 inputs (9 for the boat and wind, 3 for each of the 8 marks still to round, and how many are left), 16 tanh hidden units, 3 tanh outputs (rudder, sheet, hike). That is 611 numbers, stored as one flat vector per boat.
 - **Fitness:** the total `sailcourse` score of one episode (progress, mark bonuses, a finish bonus for speed, a time cost, a capsize penalty). Every boat in a generation sails the same courses and winds, so they are ranked on equal terms. A boat's fitness is its mean over the generation's 8 courses, and 30 % of the training legs are sharp reversals or close to the wind.
 - **Selection:** rank the 100 boats by score. The top 10 (elitism) carry over unchanged. The other 90 are copies of boats picked at random from the top 30, each with Gaussian noise added to every weight.
-- **Step size:** the noise starts at σ = 0.1 and shrinks linearly to 0.01 over the first 5,000 generations. The second 5,000 start again from the best boat of the first (a new population of mutated copies of it) with σ = 0.03 shrinking to 0.005, to polish. Same seed both times.
+- **Step size:** the noise starts at σ = 0.1 and shrinks linearly to 0.01 over the first 5,000 generations. The second 5,000 start again from the best boat of the first (a new population of mutated copies of it) with σ = 0.03 shrinking to 0.005, to polish.
 - **New courses every generation:** the elite are re-scored on each new set of courses, so a boat only stays on top if it holds up on the next ones.
 - **Held-out check:** each generation the best boat also sails 10 fixed unseen courses and the old figure 8. This is the generalisation curve in the results below.
 
