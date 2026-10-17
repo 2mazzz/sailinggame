@@ -1,6 +1,6 @@
 """Draw the figures used in the top-level README from a finished evolution run.
 
-    .venv/bin/python python/scripts/readme_figures.py web/public/runs/maps-1000x10 docs/img
+    .venv/bin/python python/scripts/readme_figures.py web/public/runs/h16-10k docs/img
 """
 
 import json
@@ -38,13 +38,13 @@ def learning(log, out):
     ax[0].plot(x, smooth([r["held_out"]["finish_rate"] for r in g]) * 100, color=ORANGE,
                label="best boat, 10 unseen courses")
     ax[0].set(title="Share of boats that finish the course", xlabel="generation", ylabel="%", ylim=(0, 100))
-    ax[0].legend(frameon=False, loc="upper left")
+    ax[0].legend(frameon=False, loc="lower right")
     ax[1].plot(x, smooth([r["held_out"]["score"] for r in g]), color=ORANGE, label="best boat, unseen courses")
     ax[1].plot(x, smooth([r["median"] for r in g]), color=BLUE, label="median boat, training course")
     ax[1].plot(x, smooth([r["baseline_score"] for r in g]), color=GREEN, ls="--", label="scripted baseline")
     ax[1].set(title="Score (higher is better)", xlabel="generation", ylabel="score")
     ax[1].legend(frameon=False, loc="lower right")
-    fig.text(0.5, -0.02, "200-generation moving averages. A new course is drawn every 10 generations.",
+    fig.text(0.5, -0.02, "200-generation moving averages. Every generation brings new random courses.",
              ha="center", color=MUTED, fontsize=9)
     fig.tight_layout()
     fig.savefig(out / "learning.png", dpi=160, bbox_inches="tight")
@@ -66,7 +66,7 @@ def tracks(run, gens, out):
         ax.plot(*m.T, "o", color=INK, ms=3, zorder=4)
         done = sum(b["outcome"] == "finished" for b in r["boats"])
         w = r["wind"]
-        ax.set_title(f"generation {gen}\n{done}/100 finished", fontsize=10)
+        ax.set_title(f"generation {gen + 1}\n{done}/100 finished", fontsize=10)
         ax.set_xlabel(f"wind {w['speed'] * 1.944:.0f} kn from {w['dir']:.0f}°", color=MUTED, fontsize=9)
         ax.set_aspect("equal")
         ax.set_xticks([]); ax.set_yticks([])
@@ -106,7 +106,7 @@ def physics(out):
     a.set_title("From above", fontsize=11)
     # From behind: heel against the righting moment.
     b.set_xlim(-3, 3); b.set_ylim(-2.8, 4.6); b.set_aspect("equal"); b.axis("off")
-    th = np.radians(18)
+    th = np.radians(-18)  # heeled to leeward (left): the sail force pushes the mast top away from the wind
     R = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]])
     def tf(pts): return np.asarray(pts) @ R.T
     water = np.array([[-3, 0], [3, 0]])
@@ -121,8 +121,8 @@ def physics(out):
     ce = tf([[-0.3, 2.3]])[0]
     b.annotate("", xy=(ce[0] - 1.6, ce[1]), xytext=ce, arrowprops=dict(arrowstyle="-|>", color=ORANGE, lw=2.5))
     b.text(ce[0] - 0.8, ce[1] + 0.3, "sail force", color=ORANGE, ha="center", fontsize=9.5)
-    b.annotate("", xy=(-1.6, -0.9), xytext=(-0.05, -0.9), arrowprops=dict(arrowstyle="-|>", color=ORANGE, lw=2.5))
-    b.text(-1.45, -1.35, "board resists\nthe side force", color=ORANGE, ha="center", fontsize=9.5, va="center")
+    b.annotate("", xy=(2.0, -0.9), xytext=(0.45, -0.9), arrowprops=dict(arrowstyle="-|>", color=ORANGE, lw=2.5))  # the water pushes back, towards the wind
+    b.text(1.85, -1.35, "board resists\nthe side force", color=ORANGE, ha="center", fontsize=9.5, va="center")
     cg = tf([[0.0, 0.7]])[0]
     b.annotate("", xy=(cg[0] + 1.7, cg[1] + 0.55), xytext=(cg[0] + 0.05, cg[1]), arrowprops=dict(arrowstyle="-|>", color=GREEN, lw=2))
     b.text(cg[0] + 2.1, cg[1] + 1.05, "crew hikes out:\nlonger righting arm", color=GREEN, ha="left", fontsize=9.5, va="center")
@@ -139,7 +139,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     log = json.loads((run / "training.json").read_text())
     learning(log, out)
-    tracks(run, [0, 500, 3000, 9999], out)
+    tracks(run, [0, 500, 2000, 4999], out)
     physics(out)
 
 

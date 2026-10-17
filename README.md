@@ -21,14 +21,14 @@ The yellow line is the apparent wind, the arrow around the boat points to the ne
 
 ![Boats at four points of training](docs/img/tracks.png)
 
-*The same population at generations 0, 500, 3000 and 9999, each on its own random course. Blue: all 100 boats. Orange: the best one. Grey circles: the marks.*
+*The same population at generations 1, 501, 2001 and 5000, each on its own random course. Blue: all 100 boats. Orange: the best one. Grey circles: the marks.*
 
 ## What it does
 
 - Each boat is a 16-unit network that reads 34 inputs (boat state, and every mark still to round) and outputs rudder, sheet and hike (leaning out).
-- Every generation all 100 boats sail the same random course (8 legs) in a random wind (8 to 16 m/s, any direction). The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %.
-- A course is kept for 10 generations, then a new one is drawn. 10,000 generations is 1,000 courses.
-- Score rewards progress, mark bonuses and a fast finish, and charges a time cost and a capsize penalty. The rudder is limited to 0.4 of full deflection.
+- Every generation all 100 boats sail the same random courses (8 legs each) in a random wind (8 to 16 m/s, any direction). The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %.
+- Every generation each boat is scored on 8 freshly drawn courses, and the run is 5,000 generations.
+- Score rewards progress, mark bonuses and a fast finish, and charges a time cost and a capsize penalty. The rudder has its full deflection (`--rudder-limit` can cap it).
 
 ## The boat
 
@@ -52,10 +52,10 @@ At 12 kn of wind the model gives about 5.3 kn and a VMG of 3.4 kn at 44° close-
 There is no gradient and no value function. The learner is a plain evolution strategy (neuroevolution) over the weights of a fixed network, so the only learning signal is the episode score.
 
 - **Policy:** 34 inputs (9 for the boat and wind, 3 for each of the 8 marks still to round, and how many are left), 16 tanh hidden units, 3 tanh outputs (rudder, sheet, hike). That is 611 numbers, stored as one flat vector per boat.
-- **Fitness:** the total `sailcourse` score of one episode (progress, mark bonuses, a finish bonus for speed, a time cost, a capsize penalty). Every boat in a generation sails the same course and wind, so they are ranked on equal terms.
+- **Fitness:** the total `sailcourse` score of one episode (progress, mark bonuses, a finish bonus for speed, a time cost, a capsize penalty). Every boat in a generation sails the same courses and winds, so they are ranked on equal terms. A boat's fitness is its mean over the generation's 8 courses, and 30 % of the training legs are sharp reversals or close to the wind.
 - **Selection:** rank the 100 boats by score. The top 10 (elitism) carry over unchanged. The other 90 are copies of boats picked at random from the top 30, each with Gaussian noise added to every weight.
-- **Step size:** the noise starts at σ = 0.3 to explore and shrinks linearly to 0.03 to polish.
-- **New course every 10 generations:** the elite are re-scored on each new course, so a boat only stays on top if it holds up on the next one.
+- **Step size:** the noise starts at σ = 0.03 and shrinks linearly to 0.005 to polish.
+- **New courses every generation:** the elite are re-scored on each new set of courses, so a boat only stays on top if it holds up on the next ones.
 - **Held-out check:** each generation the best boat also sails 10 fixed unseen courses and the old figure 8. This is the generalisation curve in the results below.
 
 ```
@@ -72,34 +72,36 @@ The loop is `python/sailing/evolve.py`. Episodes run in parallel across processe
 
 ![The Training page, all 100 boats mid-run](docs/img/midrun.png)
 
-*The game's Training page at generation 3000, 30 s into the run: all 100 boats at once with wakes, rounding the marks, and the training graphs on the right. Open it yourself with `/training.html?run=maps-1000x10&gen=3000&t=30`.*
+*The game's Training page at generation 3001, 30 s into the run: all 100 boats at once with wakes, rounding the marks, and the training graphs on the right. Open it yourself with `/training.html?run=h16-10k&gen=3001&t=30`.*
 
-| Generations | Finish rate (training course) | Finish rate (best boat, unseen courses) |
-|---|---|---|
-| 0 to 999 | 41 % | 32 % |
-| 3000 to 3999 | 46 % | 59 % |
-| 6000 to 6999 | 66 % | 70 % |
-| 9000 to 9999 | 82 % | 71 % |
+| Generations | Finish rate (training courses) | Finish rate (best boat, unseen courses) | Score (best boat, unseen courses) |
+|---|---|---|---|
+| 1 to 1000 | 84 % | 88 % | 852 |
+| 1001 to 2000 | 88 % | 93 % | 915 |
+| 2001 to 3000 | 90 % | 95 % | 939 |
+| 3001 to 4000 | 91 % | 96 % | 956 |
+| 4001 to 5000 | 92 % | 94 % | 946 |
 
-- From 0 finishers to about 80 % of the population finishing a course it is currently being trained on. By the last generation all 100 finish.
-- The best boat finishes about 70 % of courses it has never seen. That is flat since about generation 6000, so the population is getting better at the current course faster than it is generalising.
-- It does not yet beat the scripted baseline. The baseline scores about 940 on a typical course, the best evolved boat about 700 on unseen ones.
-- Early on the finish rate drops sharply (around generation 2300). A few unlucky courses can push the population toward a strategy that works only in some winds.
+- About 92 % of the population finishes the courses it is trained on, and the best boat finishes about 93 % of courses it has never seen (the last 500 generations). It almost never capsizes.
+- Progress is mostly in the first 3000 generations. After that the score on unseen courses wobbles around 940 to 960.
+- It does not yet beat the scripted baseline. The baseline scores about 1000 on a typical course, the best evolved boat about 940 on unseen ones.
+- The best boat finishes the old figure 8 every time in the last 500 generations.
 
 ## Run it
 
 ```sh
 cd python
-.venv/bin/python -m sailing.evolve --out ../web/public/runs/maps-1000x10 \
-    --generations 10000 --population 100 --gens-per-map 10
+.venv/bin/python -m sailing.evolve --out ../web/public/runs/h16-10k \
+    --generations 5000 --population 100 --sigma 0.03 --sigma-final 0.005 \
+    --hidden 16 --courses-per-gen 8 --hard-fraction 0.3
 ```
 
-On 8 cores this takes a while (the 10,000-generation run). Then, in `web/`, `npm run dev` and open `/training.html`. See `python/README.md` for the options.
+On 8 cores this takes a while (the 5,000-generation run). Then, in `web/`, `npm run dev` and open `/training.html`. See `python/README.md` for the options.
 
 Regenerate the figures above from a finished run:
 
 ```sh
-.venv/bin/python python/scripts/readme_figures.py web/public/runs/maps-1000x10 docs/img
+.venv/bin/python python/scripts/readme_figures.py web/public/runs/h16-10k docs/img
 ```
 
 `docs/img/midrun.png` is a screenshot of the page itself (with `npx vite` running in `web/`):
@@ -107,7 +109,7 @@ Regenerate the figures above from a finished run:
 ```sh
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --use-angle=swiftshader --enable-unsafe-swiftshader \
     --force-device-scale-factor=2 --window-size=1500,950 --virtual-time-budget=15000 \
-    --screenshot=docs/img/midrun.png "http://localhost:5173/training.html?run=maps-1000x10&gen=3000&t=30"
+    --screenshot=docs/img/midrun.png "http://localhost:5173/training.html?run=h16-10k&gen=3001&t=30"
 ```
 
 ## License
