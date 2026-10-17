@@ -1,6 +1,9 @@
 """Draw the figures used in the top-level README from a finished evolution run.
 
-    .venv/bin/python python/scripts/readme_figures.py web/public/runs/h16-10k docs/img
+    .venv/bin/python python/scripts/readme_figures.py web/public/runs/h16-5k web/public/runs/h16-10k docs/img
+
+Every run but the last is followed by a run that was started from its best boat (`--init-from`), so the
+runs are drawn as one, generations counting on from the end of the previous one.
 """
 
 import json
@@ -29,7 +32,7 @@ def smooth(v, w=200):
     return out
 
 
-def learning(log, out):
+def learning(log, out, joins):
     g = log["generations"]
     x = [s["gen"] + 1 for s in g]
     fig, ax = plt.subplots(1, 2, figsize=(11, 3.8))
@@ -37,6 +40,9 @@ def learning(log, out):
         ax[0].plot(x, smooth([r[s] for r in g]) * 100, color=c, label=label)
     ax[0].plot(x, smooth([r["held_out"]["finish_rate"] for r in g]) * 100, color=ORANGE,
                label="best boat, 10 unseen courses")
+    for a in ax:
+        for j in joins:
+            a.axvline(j, color=MUTED, ls=":", lw=1)
     ax[0].set(title="Share of boats that finish the course", xlabel="generation", ylabel="%", ylim=(0, 100))
     ax[0].legend(frameon=False, loc="lower right")
     ax[1].plot(x, smooth([r["held_out"]["score"] for r in g]), color=ORANGE, label="best boat, unseen courses")
@@ -44,17 +50,23 @@ def learning(log, out):
     ax[1].plot(x, smooth([r["baseline_score"] for r in g]), color=GREEN, ls="--", label="scripted baseline")
     ax[1].set(title="Score (higher is better)", xlabel="generation", ylabel="score")
     ax[1].legend(frameon=False, loc="lower right")
-    fig.text(0.5, -0.02, "200-generation moving averages. Every generation brings new random courses.",
+    fig.text(0.5, -0.02, "200-generation moving averages. Every generation brings new random courses. Dotted line: the run was restarted from its best boat.",
              ha="center", color=MUTED, fontsize=9)
     fig.tight_layout()
     fig.savefig(out / "learning.png", dpi=160, bbox_inches="tight")
     plt.close(fig)
 
 
-def tracks(run, gens, out):
+def tracks(runs, gens, out):
+    """`gens` count over all the runs together; a replay is read from the run that holds it."""
+    sizes = [len(json.loads((run / "training.json").read_text())["generations"]) for run in runs]
     fig, axes = plt.subplots(1, len(gens), figsize=(3.6 * len(gens), 5.2))
-    for ax, gen in zip(axes, gens):
-        r = json.loads((run / f"gen_{gen:04d}.json").read_text())
+    for ax, overall in zip(axes, gens):
+        i, gen = 0, overall
+        while gen >= sizes[i]:
+            gen -= sizes[i]
+            i += 1
+        r = json.loads((runs[i] / f"gen_{gen:04d}.json").read_text())
         for i, b in reversed(list(enumerate(r["boats"]))):
             p = np.array(b["p"]).reshape(-1, 4)
             best = i == 0
@@ -66,7 +78,7 @@ def tracks(run, gens, out):
         ax.plot(*m.T, "o", color=INK, ms=3, zorder=4)
         done = sum(b["outcome"] == "finished" for b in r["boats"])
         w = r["wind"]
-        ax.set_title(f"generation {gen + 1}\n{done}/100 finished", fontsize=10)
+        ax.set_title(f"generation {overall + 1}\n{done}/100 finished", fontsize=10)
         ax.set_xlabel(f"wind {w['speed'] * 1.944:.0f} kn from {w['dir']:.0f}°", color=MUTED, fontsize=9)
         ax.set_aspect("equal")
         ax.set_xticks([]); ax.set_yticks([])
@@ -136,11 +148,15 @@ def physics(out):
 
 
 def main():
-    run, out = Path(sys.argv[1]), Path(sys.argv[2])
+    runs, out = [Path(a) for a in sys.argv[1:-1]], Path(sys.argv[-1])
     out.mkdir(parents=True, exist_ok=True)
-    log = json.loads((run / "training.json").read_text())
-    learning(log, out)
-    tracks(run, [0, 500, 2000, 4999], out)
+    generations, joins = [], []
+    for run in runs:
+        for row in json.loads((run / "training.json").read_text())["generations"]:
+            generations.append({**row, "gen": len(generations)})
+        joins.append(len(generations))
+    learning({"generations": generations}, out, joins[:-1])
+    tracks(runs, [0, 500, 2500, len(generations) - 1], out)
     physics(out)
 
 
