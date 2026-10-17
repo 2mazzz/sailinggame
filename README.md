@@ -26,8 +26,7 @@ The yellow line is the apparent wind, the arrow around the boat points to the ne
 ## What it does
 
 - Each boat is a 16-unit network that reads 34 inputs (boat state, and every mark still to round) and outputs rudder, sheet and hike (leaning out).
-- Every generation all 100 boats sail the same random courses (8 legs each) in a random wind (8 to 16 m/s, any direction). The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %.
-- Every generation each boat is scored on 8 freshly drawn courses, and the run is 5,000 generations.
+- Every generation all 100 boats sail the same 8 freshly drawn random courses (8 legs each), each in its own random wind (8 to 16 m/s, any direction), and a boat is scored on its mean. The best 10 % carry over unchanged and the rest are mutated copies of the best 30 %. The run is 5,000 generations, so 40,000 courses.
 - Score rewards progress, mark bonuses and a fast finish, and charges a time cost and a capsize penalty. The rudder has its full deflection (`--rudder-limit` can cap it).
 
 ## The boat
@@ -45,7 +44,7 @@ The simulator is a deterministic Rust core (`crates/sailsim`) for a single-hande
 - **Heel:** a righting moment from a hiking-crew curve. Past 70° of heel the boat capsizes and the run ends.
 - **Controls:** rudder, sheet and hike (how far the sailor leans out). These are the three network outputs.
 
-At 12 kn of wind the model gives about 5.3 kn and a VMG of 3.4 kn at 44° close-hauled, and 6.8 kn on a beam reach. Published figures for the class are 5.4 kn, 3.75 kn and 6.5 kn. Light-air VMG is about 20 % low. Several parameters are tuned without a source and the design doc lists them: [`docs/plans/2026-10-14-dinghy-sim-design.md`](docs/plans/2026-10-14-dinghy-sim-design.md), with the source check in [`docs/research/`](docs/research/2026-10-14-dinghy-physics-validation.md). There are no waves, gusts or wind shifts in these runs.
+At 12 kn of wind the model gives about 5.3 kn and a VMG of 3.4 kn at 46° close-hauled, and 6.8 kn on a beam reach. Published figures for the class are 5.4 kn, 3.75 kn and 6.5 kn. Light-air VMG is about 20 % low. Several parameters are tuned without a source and the design doc lists them: [`docs/plans/2026-10-14-dinghy-sim-design.md`](docs/plans/2026-10-14-dinghy-sim-design.md), with the source check in [`docs/research/`](docs/research/2026-10-14-dinghy-physics-validation.md). There are no waves, gusts or wind shifts in these runs.
 
 ## How it learns
 
@@ -59,9 +58,9 @@ There is no gradient and no value function. The learner is a plain evolution str
 - **Held-out check:** each generation the best boat also sails 10 fixed unseen courses and the old figure 8. This is the generalisation curve in the results below.
 
 ```
-random weights ─► sail the course ─► score ─► keep top 10, mutate top 30 ─► next generation
-        ▲                                                                        │
-        └────────────── new course and wind every 10 generations ◄──────────────┘
+random weights ─► sail the courses ─► score ─► keep top 10, mutate top 30 ─► next generation
+        ▲                                                                           │
+        └────────────── new courses and winds every generation ◄───────────────────┘
 ```
 
 The loop is `python/sailing/evolve.py`. Episodes run in parallel across processes through a Gymnasium environment (`python/sailing/env.py`) over the same Rust code as the game. A scripted baseline sailor, not trained, is the reference the scores are compared with.
@@ -72,7 +71,7 @@ The loop is `python/sailing/evolve.py`. Episodes run in parallel across processe
 
 ![The Training page, all 100 boats mid-run](docs/img/midrun.png)
 
-*The game's Training page at generation 3001, 30 s into the run: all 100 boats at once with wakes, rounding the marks, and the training graphs on the right. Open it yourself with `/training.html?run=h16-10k&gen=3001&t=30`.*
+*The game's Training page at the last generation (5000), 40 s into the run: the 100 boats with wakes, rounding the marks (by now they sail almost the same line, so they overlap), and the training graphs on the right. Open it yourself with `/training.html?run=h16-10k&gen=5000&t=40`.*
 
 | Generations | Finish rate (training courses) | Finish rate (best boat, unseen courses) | Score (best boat, unseen courses) |
 |---|---|---|---|
@@ -109,7 +108,7 @@ Regenerate the figures above from a finished run:
 ```sh
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --use-angle=swiftshader --enable-unsafe-swiftshader \
     --force-device-scale-factor=2 --window-size=1500,950 --virtual-time-budget=15000 \
-    --screenshot=docs/img/midrun.png "http://localhost:5173/training.html?run=h16-10k&gen=3001&t=30"
+    --screenshot=docs/img/midrun.png "http://localhost:5173/training.html?run=h16-10k&gen=5000&t=40"
 ```
 
 ## License

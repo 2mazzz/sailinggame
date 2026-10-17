@@ -84,6 +84,7 @@ def physics(out):
     a.set_xlim(-3.2, 4.4); a.set_ylim(-3.4, 4.2); a.set_aspect("equal"); a.axis("off")
     hull = np.array([[0, 2.1], [0.7, 0.6], [0.7, -1.8], [-0.7, -1.8], [-0.7, 0.6]])
     a.add_patch(plt.Polygon(hull, fc="#e8edf2", ec=INK, lw=1.5))
+    a.plot([0, 0.15], [-1.8, -2.45], color=INK, lw=3, solid_capstyle="round")  # rudder blade at the stern
     boom = 0.30
     tip = np.array([-np.sin(boom) * 2.0, -np.cos(boom) * 2.0]) + [0, 0.1]
     a.plot([0, tip[0]], [0.1, tip[1]], color=INK, lw=3)
@@ -96,7 +97,7 @@ def physics(out):
     arrow(a, 2.4, 2.2, -1.1, -1.1, BLUE, "apparent wind", 2.05, 0.5)
     a.text(3.4, 0.95, "(true wind minus\nboat velocity)", color=BLUE, fontsize=8.5, ha="center", va="center")
     arrow(a, 0.0, -0.3, 0.0, 1.3, GREEN, "drive", -0.5, 0.15, 2.5)
-    arrow(a, 0.0, -0.3, -1.5, 0.0, ORANGE, "side force\n(resisted by centreboard)", -0.2, -0.65, 2.5)
+    arrow(a, 0.0, -0.3, -1.5, 0.0, ORANGE, "side force\n(resisted by\ncentreboard)", -0.35, -0.85, 2.5)
     a.annotate("", xy=(0.0, -2.2), xytext=(0.0, -3.0), arrowprops=dict(arrowstyle="-|>", color=INK, lw=1.5))
     a.text(0.0, -3.2, "heading", ha="center", fontsize=9.5, color=INK)
     a.annotate("rudder (yaw moment,\nweather helm)", xy=(0, -1.85), xytext=(-2.4, -2.3), fontsize=9.5,
