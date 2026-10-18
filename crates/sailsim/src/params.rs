@@ -146,8 +146,8 @@ impl BoatParams {
             heel_inertia: 250.0,
             heel_damping: 900.0,
             sail_ce_aft: 0.25,
-            // RETUNED, no source (was 0.42): the larger rudder moved the centre of lateral resistance aft, giving lee helm; moving the board forward restores the mild weather helm (about 2 deg drift in 30 s) that tests/helm.rs expects. Research flags this CE/CLR lead as too large; revisit with the helm-angle data.
-            board_arm: 0.76,
+            // RETUNED, no source (was 0.76 before the rudder stall work, 0.42 before that): the larger rudder moved the centre of lateral resistance aft, giving lee helm; moving the board forward restores the mild weather helm (about 2 deg drift in 30 s) that tests/helm.rs expects. Research flags this CE/CLR lead as too large; revisit with the helm-angle data.
+            board_arm: 0.75,
             yaw_inertia: 200.0,
             yaw_damping_linear: 80.0,
             yaw_damping_quadratic: 60.0,
@@ -163,7 +163,8 @@ impl BoatParams {
                 max_lift: None,
             },
             // LOW confidence: my estimate (about 0.45 m x 0.2 m submerged) from the ILCA class rules drawing, not a published figure (was 0.06).
-            rudder_area: 0.09,
+            // RETUNED, no source (was 0.09): the 0.9 wake inflow scales dynamic pressure by 0.81 (and the new slope is 3.8, not 3.5), so the rudder damped weather helm too little and tests/helm.rs drifted -31.9 deg in 30 s. Measured (beam drift deg / close-hauled heading deg after 15 s): area 0.09: -31.9 / 6.3; 0.10: -8.4 / 3.6; 0.105: -4.2 / 2.0; 0.11: -1.4 / 0.4 (steering.rs needs > 1, helm.rs |drift| < 5), so 0.105 with board_arm 0.75 (0.09 / 0.81 = 0.111 would restore the old force at equal speed but leaves too little weather helm close-hauled).
+            rudder_area: 0.105,
             rudder_arm: 1.7,
             rudder_max_angle: 35.0_f64.to_radians(),
             rudder_inflow_factor: 0.9,

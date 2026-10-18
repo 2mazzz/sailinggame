@@ -830,6 +830,14 @@ test name | measured values | assertion
 a_released_rudder_holds_a_beam_reach_course (tests/helm.rs:36) | heading drifted -31.94 deg in 30 s with the rudder released | drift.abs() < 5.0
 (all other workspace tests pass; steering/irons/no_go_zone/polar/published_targets did not fail)
 
+Task 3 retune (helm balance after the rudder change):
+Diagnosis: the failure is a helm-balance effect. Beam drift (deg/30 s) vs board_arm at area 0.09: 0.70 -12.3, 0.72 -18.2, 0.74 -26.7, 0.76 -31.9, 0.80 -34.7, 0.84 -36.2. Vs rudder_area at board 0.76: 0.09 -31.9, 0.10 -8.4, 0.11 -1.4, 0.12 +2.9.
+rudder_area | 0.09 | 0.105 | 0.81 inflow factor and slope 3.8 changed rudder force; 0.11 fixed helm.rs but broke steering.rs a_released_helm_rounds_the_boat_up_into_the_wind (close-hauled heading 0.37 deg, needs > 1)
+board_arm | 0.76 | 0.75 | small trim with the area so both helm.rs (beam drift -3.4 deg) and steering.rs (close-hauled +1.7 deg) pass
+No test expectation was changed.
+Beam reach after Task 3 (baseline 4.62, 6.50, 8.86, 10.55, 12.16): 4.62, 6.51, 8.88, 10.57, 12.19
+Rudder stall finding (tests/rudder_stall.rs): steady yaw rate is monotone in rudder (2 s: 0.1 -> 3.8 deg/s ... 1.0 -> 31.0) because the turning stern's sideways velocity (yaw_rate x 1.7 m) cuts the blade angle of attack by about 20 deg; the stall only shows in the first 0.1 s (peak at rudder 0.4-0.5: 7.6 deg/s, dip to 5.6 at 0.7).
+
 Beam reach after Task 2:
 beam reach 8 kn wind: 4.62 kn
 beam reach 12 kn wind: 6.52 kn
