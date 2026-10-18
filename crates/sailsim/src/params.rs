@@ -10,6 +10,10 @@ pub struct FoilParams {
     pub stall_angle: f64,
     pub drag_zero_lift: f64,
     pub aspect_ratio: f64,
+    /// Planform efficiency `e`: induced drag is `CL^2 / (pi e AR)`. 0.7 is the
+    /// value the sim used for every foil before the rudder work (no source);
+    /// a rudder near the free surface uses the Day (2017) form instead.
+    pub efficiency: f64,
     /// Flat-plate normal-force coefficient, used once stalled.
     pub plate_normal: f64,
     /// Exponent of the stall blend `x^n / (1 + x^n)`, `x = alpha / stall_angle`:
@@ -116,6 +120,7 @@ impl BoatParams {
                 stall_angle: 0.25,
                 drag_zero_lift: 0.012,
                 aspect_ratio: 2.0,
+                efficiency: 0.7,
                 plate_normal: 1.1,
                 stall_sharpness: 2,
                 max_lift: None,
@@ -148,6 +153,7 @@ impl BoatParams {
                 stall_angle: 0.30,
                 drag_zero_lift: 0.012,
                 aspect_ratio: 2.5,
+                efficiency: 0.7,
                 plate_normal: 1.1,
                 stall_sharpness: 2,
                 max_lift: None,
@@ -163,6 +169,7 @@ impl BoatParams {
                 stall_angle: 0.35,
                 drag_zero_lift: 0.04,
                 aspect_ratio: 4.5,
+                efficiency: 0.7,
                 plate_normal: 1.2,
                 stall_sharpness: 4,
                 max_lift: Some(1.15),

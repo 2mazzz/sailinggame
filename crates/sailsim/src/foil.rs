@@ -22,8 +22,24 @@ pub fn coefficients_sc(foil: &FoilParams, alpha: f64, sin: f64, cos: f64) -> (f6
     let cl_plate = foil.plate_normal * sin * cos;
     let cl = (1.0 - stalled) * cl_attached + stalled * cl_plate;
 
-    let induced = cl_attached * cl_attached / (std::f64::consts::PI * 0.7 * foil.aspect_ratio);
+    let induced = cl_attached * cl_attached / (std::f64::consts::PI * foil.efficiency * foil.aspect_ratio);
     let cd_plate = foil.plate_normal * sin * sin;
     let cd = foil.drag_zero_lift + (1.0 - stalled) * induced + stalled * cd_plate;
     (cl, cd)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::params::BoatParams;
+
+    #[test]
+    fn higher_efficiency_means_less_induced_drag() {
+        let mut foil = BoatParams::ilca_like().rudder;
+        foil.efficiency = 0.5;
+        let (_, cd_low) = coefficients(&foil, 8.0_f64.to_radians());
+        foil.efficiency = 1.0;
+        let (_, cd_high) = coefficients(&foil, 8.0_f64.to_radians());
+        assert!(cd_high < cd_low, "{cd_high} should be below {cd_low}");
+    }
 }
