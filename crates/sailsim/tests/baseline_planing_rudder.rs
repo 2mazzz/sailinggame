@@ -36,3 +36,11 @@ fn print_reach_speeds_for_the_record() {
         println!("beam reach {wind} kn wind: {:.2} kn", reach_speed(wind));
     }
 }
+
+#[test]
+fn strong_wind_reach_is_fast_but_not_absurd() {
+    // No primary data above 9 kn. Forum anecdote: a Laser GPS-logged about
+    // 15 kn in a gust with tide. This is a sanity band, not a validation.
+    let kn = reach_speed(25.0);
+    assert!((7.0..16.0).contains(&kn), "{kn} kn");
+}
