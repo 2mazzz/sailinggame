@@ -158,13 +158,13 @@ impl BoatParams {
             yaw_inertia: 200.0,
             yaw_damping_linear: 80.0,
             yaw_damping_quadratic: 60.0,
-            // Day (2017) eq. 12: slope 5.7 AR_E / (1.8 + sqrt(AR_E^2 + 4)) with AR_E = 2b/c = 2 x 0.45 / 0.20 = 4.5 (free-surface image), 3.8 per rad. Stall: NACA 0012 stalls at 12 to 14 degrees (NACA TN 3361; Sandia SAND80-2114 at dinghy Reynolds numbers 3.5 to 5e5), so stall_angle 0.26 rad with a sharp blend (exponent 8) and no soft ceiling. Efficiency 0.9 is an assumption (Day 2017 uses Nita and Scholz 2012, not yet read). Confidence: medium for slope and stall, low for efficiency and the submerged span 0.45 m. Lin et al. (2018, CFD, 470 class) put stall at 30 degrees of rudder angle including hull wake and board downwash; not modelled here.
+            // Day (2017) eq. 12: slope 5.7 AR_E / (1.8 + sqrt(AR_E^2 + 4)) with AR_E = 2b/c = 2 x 0.45 / 0.20 = 4.5 (free-surface image), 3.8 per rad. Stall: NACA 0012 stalls at 12 to 14 degrees (NACA TN 3361; Sandia SAND80-2114 at dinghy Reynolds numbers 3.5 to 5e5), so stall_angle 0.26 rad with a sharp blend (exponent 8) and no soft ceiling. Efficiency 0.97: Day (2017) eq. 17 takes it from Nita and Scholz (2012) eq. 36 to 38, e = 1 / (1 + f(TR - dTR) AR) with sweep 0; for a straight blade of taper ratio 0.8 to 1.0 and AR_E 4.5 that gives 0.966 to 0.978 (about 0.97 at TR 0.9); it is the theoretical (inviscid) value, uncorrected for the aircraft-only fuselage, zero-lift-drag and Mach factors. Was an assumed 0.9. Confidence: medium for slope, stall and efficiency, low for the submerged span 0.45 m. See docs/research/2026-10-18-parameter-audit.md. Lin et al. (2018, CFD, 470 class) put stall at 30 degrees of rudder angle including hull wake and board downwash; not modelled here.
             rudder: FoilParams {
                 lift_slope: 3.8,
                 stall_angle: 0.26,
                 drag_zero_lift: 0.012,
                 aspect_ratio: 4.5,
-                efficiency: 0.9,
+                efficiency: 0.97,
                 plate_normal: 1.1,
                 stall_sharpness: 8,
                 max_lift: None,
