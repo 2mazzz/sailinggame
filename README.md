@@ -44,6 +44,8 @@ The simulator is a deterministic Rust core (`crates/sailsim`) for a single-hande
 - **Heel:** a righting moment from a hiking-crew curve. Past 70° of heel the boat capsizes and the run ends.
 - **Controls:** rudder, sheet and hike (how far the sailor leans out). These are the three network outputs.
 
+Seven engineering graphs of the boat (hull resistance, foils, rudder, polars, heel and time responses), drawn from the sim with published points overlaid, are in [`docs/boat-dynamics.md`](docs/boat-dynamics.md).
+
 At 12 kn of wind the model gives about 5.3 kn and a VMG of 3.4 kn at 46° close-hauled, and 6.8 kn on a beam reach. Published figures for the class are 5.4 kn, 3.75 kn and 6.5 kn. Light-air VMG is about 20 % low. Several parameters are tuned without a source and the design doc lists them: [`docs/plans/2026-10-14-dinghy-sim-design.md`](docs/plans/2026-10-14-dinghy-sim-design.md), with the source check in [`docs/research/`](docs/research/2026-10-14-dinghy-physics-validation.md) and a parameter-by-parameter audit in [`docs/research/2026-10-18-parameter-audit.md`](docs/research/2026-10-18-parameter-audit.md). There are no waves, gusts or wind shifts in these runs.
 
 ## How it learns
