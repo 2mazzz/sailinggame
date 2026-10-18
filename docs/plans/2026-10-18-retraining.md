@@ -16,7 +16,7 @@
 
 1. **Cost is low.** The old run's logged evaluate time was 1.7 h for the first 5,000 generations and 1.2 h for the second, about 3 h for all 10,000 on 8 cores (`timing.evaluate_s` in `training.json`, plus held-out scoring). That is cheap enough for a proper pilot grid first.
 2. **Training sits entirely in the part of the sim with the weakest evidence.** `WIND_SPEED = (8, 16)` m/s is 15.5 to 31 kn, and every training leg is a reach or broad reach (65 to 140 degrees off the wind). The new physics gives about 9 to 16 kn boat speed there, which is above the 9 kn tank data, so the hull resistance comes from the assumed tail (`planing_resistance_exponent` 0.5). Sensitivity from the research note: the 25 kn beam reach moves from 12.2 kn (p = 2) to 16.0 kn (p = 0). The boats will learn whatever the tail says. There are also no waves, and 31 kn is far beyond normal Laser racing (about 25 kn is the limit).
-3. **The rudder cap decision matters again.** Previous runs used the full 35 degree rudder (`rudder_limit` 1.0). The rudder now stalls near 12 to 15 degrees, so full rudder is deep in the stall on turn entry and costs speed. A cap of 0.4 (14 degrees, about the stall angle) was a real option earlier (`web/public/runs/rudder-0.4*` exist).
+3. **The rudder is not capped; how much to use is part of what the boats learn.** Previous runs used the full 35 degree rudder (`rudder_limit` 1.0) and so does this plan, with no cap as a variable. The rudder now stalls near 12 to 15 degrees, so full rudder is deep in the stall on turn entry and costs speed; a boat that learns to use moderate angles should beat one that does not. That makes rudder use an outcome to measure (Task 6), not a setting to choose. One trap: `--rudder-limit` defaults to 1.0 in your working tree but to 0.4 in the committed `evolve.py`, so after Task 0 check that the default is 1.0 (or pass `--rudder-limit 1.0` explicitly in every command).
 4. **Your uncommitted work is not on the PR branch.** `evolve.py` (width read from weights, `HIDDEN` default 48, `single_map_scenario`), `courses.py`, `crates/sailpy/src/lib.rs`, `web/src/training.ts`, `charts.ts`, `combine.py` and the baseline scripts exist only in your main working tree. The retraining needs them, so they have to be committed and merged with the PR first.
 5. **The old runs stay valid as recordings.** The Training page replays stored trajectories, so `h16-5k`, `h16-10k` and `h16-full` still play. They just no longer match the simulator. Keep them under their names and give the new ones new names (`p2-*`).
 6. **The scripted baseline may have shifted.** It uses fixed gains (`STEER_GAIN` 2.0, 12 degree angle of attack) tuned on the old rudder. Its score on the new physics must be re-measured before any comparison with the trained boats.
@@ -25,7 +25,6 @@
 
 | Decision | Options | How it is decided |
 |---|---|---|
-| Rudder cap | 1.0 (as before) or 0.4 | Pilot: compare held-out score, capsize rate, and mean absolute rudder |
 | Warm start | from `h16-full/best.json`, or from scratch | Pilot: same budget, compare |
 | Wind range | keep 8 to 16 m/s (comparable with the old results), or 4 to 12 m/s (mostly below 9 kn boat speed, so the sourced part of the sim) | **Your call.** My recommendation: run both in the pilot and make 4 to 12 m/s the headline run, keeping 8 to 16 as a stress test. Needs a `--wind-min/--wind-max` option (Task 2) |
 | Planing exponent p | 0.5 (current), or 1.0 | Pilot at one setting, then repeat the best arm at p = 1.0. If the learned behaviour (finish rate, tacking and reaching lines) does not change, p does not matter for training; if it does, say so in the README |
@@ -77,20 +76,20 @@ def test_wind_range_is_respected():
 
 ## Task 3: Pilot grid (300 generations each)
 
-Arms, all `--hidden 16 --population 100 --courses-per-gen 8 --hard-fraction 0.3 --generations 300`, two seeds each (`--seed 0` and `--seed 1`), `--workers 2` so four runs share the 8 cores:
+Three arms, all `--hidden 16 --population 100 --courses-per-gen 8 --hard-fraction 0.3 --generations 300`, two seeds each (`--seed 0` and `--seed 1`), `--workers 2` so four runs share the 8 cores:
 
-| Arm | rudder cap | start | wind (m/s) |
-|---|---|---|---|
-| A | 1.0 | warm (`h16-full`) | 8 to 16 |
-| B | 1.0 | scratch | 8 to 16 |
-| C | 0.4 | scratch | 8 to 16 |
-| D | 1.0 | scratch | 4 to 12 |
-| E | 0.4 | scratch | 4 to 12 |
+The rudder is never capped (full 35 degrees, `--rudder-limit 1.0`), so it is not an arm.
 
-Example (arm D, seed 0):
+| Arm | start | wind (m/s) |
+|---|---|---|
+| A | warm (`h16-full`) | 8 to 16 |
+| B | scratch | 8 to 16 |
+| C | scratch | 4 to 12 |
+
+Example (arm C, seed 0):
 
 ```sh
-.venv/bin/python -m sailing.evolve --out web/public/runs/pilot-D-s0 --seed 0 \
+.venv/bin/python -m sailing.evolve --out web/public/runs/pilot-C-s0 --seed 0 \
     --generations 300 --population 100 --sigma 0.1 --sigma-final 0.03 \
     --hidden 16 --courses-per-gen 8 --hard-fraction 0.3 \
     --rudder-limit 1.0 --wind-min 4 --wind-max 12 --workers 2
@@ -98,13 +97,13 @@ Example (arm D, seed 0):
 
 For a warm start add `--init-from web/public/runs/h16-full` and use `--sigma 0.03 --sigma-final 0.01`.
 
-**Expected time:** about 3 to 6 minutes per 300 generations per run at 8 cores, so the whole grid is roughly an hour.
+**Expected time:** about 3 to 6 minutes per 300 generations per run at 8 cores, so the six runs take under an hour.
 
-**Step: Compare.** Write `python/scripts/compare_runs.py` that reads each `training.json` and prints, over the last 50 generations: held-out finish rate and score, population finish rate, capsize rate, and (from `best_controls`) mean absolute rudder and the share of steps with rudder beyond 0.4. The last two answer whether the boats learned to avoid the stall.
+**Step: Compare.** Write `python/scripts/compare_runs.py` that reads each `training.json` and prints, over the last 50 generations: held-out finish rate and score, population finish rate, capsize rate, and (from `best_controls`) the mean absolute rudder and the share of steps with rudder beyond 0.4 (about 14 degrees, the stall). The last two show whether the boats learned to use the rudder moderately, which is the point of leaving it uncapped.
 
 **Decision rule (written before looking at the results):**
-- Prefer the arm with the higher held-out score; a difference under one seed-to-seed spread (use the two seeds) is a tie, and ties go to the simpler setup (scratch, full rudder, wind 8 to 16 for comparability).
-- Report arms B and C separately even if they tie: whether the cap matters is a finding for the README.
+- Prefer the arm with the higher held-out score; a difference under one seed-to-seed spread (use the two seeds) is a tie, and ties go to the simpler setup (scratch, wind 8 to 16 for comparability).
+- Report rudder use for every arm whether or not the arms tie: how much rudder the boats learn to use is a finding for the README.
 - If warm start (A) is within one spread of scratch (B), start from scratch, because a clean run is easier to describe.
 
 Commit the comparison script and the table in the results doc. Do not commit `web/public/runs` (gitignored).
@@ -151,7 +150,7 @@ Run it in the background with `caffeinate -i` so the laptop does not sleep, and 
 
 **Step 2:** Regenerate `docs/img/midrun.png` with the Chrome command in the README, pointing at `?run=p2-h16-10k`.
 
-**Step 3:** Rewrite the Results section from the new `training.json` (the same table shape: finish rate and score per 2,000 generations), remove the "evolved on the earlier physics" note, and describe the setup actually used (wind range, rudder cap, warm or scratch). Keep one short paragraph saying the old run used the earlier physics and where its recordings still are, if they stay in the repo.
+**Step 3:** Rewrite the Results section from the new `training.json` (the same table shape: finish rate and score per 2,000 generations), remove the "evolved on the earlier physics" note, and describe the setup actually used (wind range, warm or scratch, the full uncapped rudder). Keep one short paragraph saying the old run used the earlier physics and where its recordings still are, if they stay in the repo.
 
 **Step 4:** Update the "Run it" commands to the ones in Task 5. Check by running the first command for 2 generations.
 
