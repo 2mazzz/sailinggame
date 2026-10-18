@@ -17,7 +17,7 @@
 1. **Cost is low.** The old run's logged evaluate time was 1.7 h for the first 5,000 generations and 1.2 h for the second, about 3 h for all 10,000 on 8 cores (`timing.evaluate_s` in `training.json`, plus held-out scoring). That is cheap enough for a proper pilot grid first.
 2. **Training sits entirely in the part of the sim with the weakest evidence.** `WIND_SPEED = (8, 16)` m/s is 15.5 to 31 kn, and every training leg is a reach or broad reach (65 to 140 degrees off the wind). The new physics gives about 9 to 16 kn boat speed there, which is above the 9 kn tank data, so the hull resistance comes from the assumed tail (`planing_resistance_exponent` 0.5). Sensitivity from the research note: the 25 kn beam reach moves from 12.2 kn (p = 2) to 16.0 kn (p = 0). The boats will learn whatever the tail says. There are also no waves, and 31 kn is far beyond normal Laser racing (about 25 kn is the limit).
 3. **The rudder is not capped; how much to use is part of what the boats learn.** Previous runs used the full 35 degree rudder (`rudder_limit` 1.0) and so does this plan, with no cap as a variable. The rudder now stalls near 12 to 15 degrees, so full rudder is deep in the stall on turn entry and costs speed; a boat that learns to use moderate angles should beat one that does not. That makes rudder use an outcome to measure (Task 6), not a setting to choose. One trap: `--rudder-limit` defaults to 1.0 in your working tree but to 0.4 in the committed `evolve.py`, so after Task 0 check that the default is 1.0 (or pass `--rudder-limit 1.0` explicitly in every command).
-4. **Your uncommitted work is not on the PR branch.** `evolve.py` (width read from weights, `HIDDEN` default 48, `single_map_scenario`), `courses.py`, `crates/sailpy/src/lib.rs`, `web/src/training.ts`, `charts.ts`, `combine.py` and the baseline scripts exist only in your main working tree. The retraining needs them, so they have to be committed and merged with the PR first.
+4. **The training tooling lives on `parallel-training`, not on the physics branch.** Commit 3ab2642 there has `evolve.py` (width read from the weights, default 16 hidden units, default full rudder), `courses.py`, `crates/sailpy/src/lib.rs` and the optional `combine.py`. The Training page changes, README and figure edits and the `add_baseline_*` scripts are still uncommitted in the main tree. The retraining needs the committed part, so merge it with the physics branch first.
 5. **The old runs stay valid as recordings.** The Training page replays stored trajectories, so `h16-5k`, `h16-10k` and `h16-full` still play. They just no longer match the simulator. Keep them under their names and give the new ones new names (`p2-*`).
 6. **The scripted baseline may have shifted.** It uses fixed gains (`STEER_GAIN` 2.0, 12 degree angle of attack) tuned on the old rudder. Its score on the new physics must be re-measured before any comparison with the trained boats.
 
@@ -35,9 +35,9 @@
 
 **Files:** none new; git operations only.
 
-**Step 1:** In your main working tree, review and commit the uncommitted evolve, courses, sailpy, web and combine work on its own branch (it is your work, so you choose the commit split), and open a PR for it.
+**Step 1:** The evolve, courses, sailpy and combine work is already committed on `parallel-training` (3ab2642). Decide what to do with the remaining uncommitted Training page, README and baseline-script changes before the merge.
 
-**Step 2:** Merge PR #17 (the physics). Merge order does not matter much, but resolve the `README.md` conflict by keeping both sides (PR #17 edits The boat and Results; your edits are elsewhere).
+**Step 2:** Merge `planing-rudder-realism` (the physics) and `parallel-training` into `main` (there is no PR; PR #17 was closed). Merge order does not matter much; if `README.md` conflicts, keep both sides (the physics branch edits The boat and Results).
 
 **Step 3:** On the merged `main`, run `cargo test --workspace`. Expected: green.
 
@@ -114,7 +114,7 @@ Repeat the winning arm once with `planing_resistance_exponent` 1.0 (temporarily 
 
 ## Task 5: The full run
 
-Use the chosen arm for 2 x 5,000 generations, same schedule as before:
+Use the chosen arm for 2 x 5,000 generations, same schedule as before. `combine` is an optional extra, not a required step: it only joins the two stretches into one run for viewing and for the figures (`readme_figures.py` takes the stretches separately too), and nothing in `evolve` calls it. Skip the third command if you would rather keep two separate runs.
 
 ```sh
 .venv/bin/python -m sailing.evolve --out web/public/runs/p2-h16-5k \
@@ -125,7 +125,7 @@ Use the chosen arm for 2 x 5,000 generations, same schedule as before:
     --generations 5000 --population 100 --sigma 0.03 --sigma-final 0.005 \
     --hidden 16 --courses-per-gen 8 --hard-fraction 0.3 <chosen flags>
 .venv/bin/python -m sailing.combine --out web/public/runs/p2-h16-full \
-    web/public/runs/p2-h16-5k web/public/runs/p2-h16-10k
+    web/public/runs/p2-h16-5k web/public/runs/p2-h16-10k   # optional
 ```
 
 Run it in the background with `caffeinate -i` so the laptop does not sleep, and check the generation count at intervals instead of tailing the log. Expected: about 3 hours on 8 cores. If a run dies, it can be continued with `--init-from` from the last `best.json`; the run directory records where it stopped.
