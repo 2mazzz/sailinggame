@@ -56,6 +56,9 @@ pub struct BoatParams {
     /// angle at full deflection (rad).
     pub rudder_arm: f64,
     pub rudder_max_angle: f64,
+    /// Rudder inflow speed as a fraction of boat speed (the blade sits in the
+    /// wake of the hull): 0.9, Day (2017). Confidence: medium.
+    pub rudder_inflow_factor: f64,
     /// Sculling moment (N m) at full rudder, peaking at about `rudder_scull_speed`
     /// (m/s) of surge: the extra turning a sailor gets by working the tiller
     /// when the blade alone is too slow to bite.
@@ -148,20 +151,22 @@ impl BoatParams {
             yaw_inertia: 200.0,
             yaw_damping_linear: 80.0,
             yaw_damping_quadratic: 60.0,
+            // Day (2017) eq. 12: slope 5.7 AR_E / (1.8 + sqrt(AR_E^2 + 4)) with AR_E = 2b/c = 2 x 0.45 / 0.20 = 4.5 (free-surface image), 3.8 per rad. Stall: NACA 0012 stalls at 12 to 14 degrees (NACA TN 3361; Sandia SAND80-2114 at dinghy Reynolds numbers 3.5 to 5e5), so stall_angle 0.26 rad with a sharp blend (exponent 8) and no soft ceiling. Efficiency 0.9 is an assumption (Day 2017 uses Nita and Scholz 2012, not yet read). Confidence: medium for slope and stall, low for efficiency and the submerged span 0.45 m. Lin et al. (2018, CFD, 470 class) put stall at 30 degrees of rudder angle including hull wake and board downwash; not modelled here.
             rudder: FoilParams {
-                lift_slope: 3.5,
-                stall_angle: 0.30,
+                lift_slope: 3.8,
+                stall_angle: 0.26,
                 drag_zero_lift: 0.012,
-                aspect_ratio: 2.5,
-                efficiency: 0.7,
+                aspect_ratio: 4.5,
+                efficiency: 0.9,
                 plate_normal: 1.1,
-                stall_sharpness: 2,
+                stall_sharpness: 8,
                 max_lift: None,
             },
             // LOW confidence: my estimate (about 0.45 m x 0.2 m submerged) from the ILCA class rules drawing, not a published figure (was 0.06).
             rudder_area: 0.09,
             rudder_arm: 1.7,
             rudder_max_angle: 35.0_f64.to_radians(),
+            rudder_inflow_factor: 0.9,
             rudder_scull_moment: 200.0,
             rudder_scull_speed: 0.5,
             sail: FoilParams {

@@ -824,6 +824,18 @@ beam reach 25 kn wind: 12.16 kn
 
 ```
 (test name, old value, new value, reason)
+
+Task 2 (rudder stall, AR 4.5, inflow 0.9), failures in `cargo test --workspace --no-fail-fast`:
+test name | measured values | assertion
+a_released_rudder_holds_a_beam_reach_course (tests/helm.rs:36) | heading drifted -31.94 deg in 30 s with the rudder released | drift.abs() < 5.0
+(all other workspace tests pass; steering/irons/no_go_zone/polar/published_targets did not fail)
+
+Beam reach after Task 2:
+beam reach 8 kn wind: 4.62 kn
+beam reach 12 kn wind: 6.52 kn
+beam reach 16 kn wind: 8.89 kn
+beam reach 20 kn wind: 10.59 kn
+beam reach 25 kn wind: 12.22 kn
 ```
 
 ## Sources

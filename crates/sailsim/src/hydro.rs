@@ -71,7 +71,8 @@ pub fn rudder_force(
     let blade_angle = rudder.clamp(-1.0, 1.0) * params.rudder_max_angle * surge.signum();
     let alpha = blade_angle + stern_sway.atan2(surge.abs());
     let (cl, cd) = foil::coefficients(&params.rudder, alpha.abs());
-    let q_s = 0.5 * WATER_DENSITY * speed * speed * params.rudder_area;
+    let inflow = speed * params.rudder_inflow_factor;
+    let q_s = 0.5 * WATER_DENSITY * inflow * inflow * params.rudder_area;
 
     let lateral = -alpha.signum() * cl * q_s;
     let drag = -surge.signum() * cd * q_s;
