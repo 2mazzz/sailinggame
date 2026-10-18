@@ -8,7 +8,10 @@ pub fn hull_resistance(params: &BoatParams, surge: f64) -> f64 {
     let speed = surge.abs();
     let table = &params.hull_drag_area;
     let drag_area = match table.iter().position(|&(v, _)| speed < v) {
-        None => table[table.len() - 1].1,
+        None => {
+            let (v_last, a_last) = table[table.len() - 1];
+            a_last * (v_last / speed).powf(2.0 - params.planing_resistance_exponent)
+        }
         Some(0) => table[0].1,
         Some(i) => {
             let ((v0, a0), (v1, a1)) = (table[i - 1], table[i]);

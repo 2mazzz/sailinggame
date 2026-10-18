@@ -33,6 +33,12 @@ pub struct BoatParams {
     /// linearly interpolated and held constant beyond the ends. It carries the
     /// hump near 6.5 kn where the hull starts to plane.
     pub hull_drag_area: [(f64, f64); 7],
+    /// Above the last tank-test point (9 kn) resistance follows
+    /// `R = R9 (v / v9)^p`. p = 2 would be the old constant drag area; a
+    /// planing hull is lower. ASSUMPTION, no source: Day and Nixon (2014) tested
+    /// only to 9 kn. Confidence: low. Sensitivity is checked in
+    /// docs/research/2026-10-18-planing-and-rudder-sources.md.
+    pub planing_resistance_exponent: f64,
     /// Sail area (m^2).
     pub sail_area: f64,
     /// Boom angle from the centreline when the sheet is fully eased / fully in (rad).
@@ -114,6 +120,7 @@ impl BoatParams {
                 (8.0 * KN, 0.0221),
                 (9.0 * KN, 0.0206),
             ],
+            planing_resistance_exponent: 0.5,
             sail_area: 7.0,
             boom_angle_eased: 90.0_f64.to_radians(),
             boom_angle_in: 21.0_f64.to_radians(),

@@ -839,6 +839,13 @@ Beam reach after Task 3 (baseline 4.62, 6.50, 8.86, 10.55, 12.16): 4.62, 6.51, 8
 Rudder stall finding (tests/rudder_stall.rs): steady yaw rate is monotone in rudder (2 s: 0.1 -> 3.8 deg/s ... 1.0 -> 31.0) because the turning stern's sideways velocity (yaw_rate x 1.7 m) cuts the blade angle of attack by about 20 deg; the stall only shows in the first 0.1 s (peak at rudder 0.4-0.5: 7.6 deg/s, dip to 5.6 at 0.7).
 Decision (user, after Task 3): keep stall physics; stall asserted on turn entry (0.2 s), steady yaw rate monotone by design.
 
+Beam reach after Task 4 (planing tail p = 0.5, low confidence; after Task 3: 4.62, 6.51, 8.88, 10.57, 12.19):
+beam reach 8 kn wind: 4.62 kn
+beam reach 12 kn wind: 6.51 kn
+beam reach 16 kn wind: 8.88 kn
+beam reach 20 kn wind: 11.71 kn
+beam reach 25 kn wind: 15.03 kn
+
 Beam reach after Task 2:
 beam reach 8 kn wind: 4.62 kn
 beam reach 12 kn wind: 6.52 kn
