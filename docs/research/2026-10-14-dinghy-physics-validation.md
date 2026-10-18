@@ -29,6 +29,8 @@ Sim numbers below were produced with a throwaway probe crate outside the repo (i
 
 **Status (ticket 14, resolved):** items 1, 2 and 3 are done together: the hiking righting curve, the tank-data hull resistance table, depowering and a stronger sail (see the design doc, Known model limits, for the numbers). Item 4 was done in ticket 13, item 5 partly. Item 6 (irons) was done in ticket 3 with a sculling moment, not a back-winded sail. Not resolved: light-air VMG is still about 20 % low, and the beam-reach target needed a lower sail lift ceiling (1.15) than the ORC table (1.35) because the ORC lift on the reach plus the tank resistance gives about 7.9 kn against the measured 6.5.
 
+**Status note (2026-10-18):** Q2e (planing) and Q5 (rudder and foil) were revisited on 2026-10-18. See [planing and rudder sources](2026-10-18-planing-and-rudder-sources.md) and the [parameter audit](2026-10-18-parameter-audit.md). The findings in this document are left as written.
+
 1. Replace the sine GZ with a hiking-crew curve (`stability.rs`). It is the main reason for 20 deg heel at 12 kn and it distorts the sail balance (Q6).
 2. Fix the resistance curve: remove the linear term, add a speed-dependent coefficient with a hump at 5-6.5 kn, or tabulate the Day and Nixon drag area (Q4).
 3. Add proper depowering (flat/spill or an RM-limited sheet) so upwind VMG saturates at 3.8 kn above 12 kn; raise sail CL toward the ORC low-lift curve (Q2, Q3). The two errors currently cancel at 12 kn only.

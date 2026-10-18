@@ -39,12 +39,12 @@ The simulator is a deterministic Rust core (`crates/sailsim`) for a single-hande
 
 - **Apparent wind:** the true wind minus the boat's own velocity, in the boat's frame. It swings forward as the boat speeds up.
 - **Sail:** lift and drag from the angle of attack, with stall. The sheet sets the boom angle. The force acts at the sail's centre of effort, which gives the heeling moment. Once that moment is large the sail depowers (flattens), as a sailor would.
-- **Hull:** drag that follows a tank-test table, with its hump near 6.5 kn. There is no planing.
-- **Centreboard and rudder:** foils with lift and drag. The board resists sideways force, so leeway is small but not zero. The rudder is at the stern, so spinning and sideslip change what it sees. The board sits ahead of the sail's centre of effort, so a released rudder rounds the boat up (weather helm).
+- **Hull:** drag that follows a tank-test table, with its hump near 6.5 kn. The table covers the planing hump up to 9 kn; above that, resistance follows an assumed power law (low confidence, no Laser data there). There is no dynamic trim and no wave surfing.
+- **Centreboard and rudder:** foils with lift and drag. The board resists sideways force, so leeway is small but not zero. The rudder is at the stern, so spinning and sideslip change what it sees. It stalls at about 12° angle of attack, pays induced drag as a finite blade near the free surface, and sees 0.9 of the boat speed. The board sits ahead of the sail's centre of effort, so a released rudder rounds the boat up (weather helm).
 - **Heel:** a righting moment from a hiking-crew curve. Past 70° of heel the boat capsizes and the run ends.
 - **Controls:** rudder, sheet and hike (how far the sailor leans out). These are the three network outputs.
 
-At 12 kn of wind the model gives about 5.3 kn and a VMG of 3.4 kn at 46° close-hauled, and 6.8 kn on a beam reach. Published figures for the class are 5.4 kn, 3.75 kn and 6.5 kn. Light-air VMG is about 20 % low. Several parameters are tuned without a source and the design doc lists them: [`docs/plans/2026-10-14-dinghy-sim-design.md`](docs/plans/2026-10-14-dinghy-sim-design.md), with the source check in [`docs/research/`](docs/research/2026-10-14-dinghy-physics-validation.md). There are no waves, gusts or wind shifts in these runs.
+At 12 kn of wind the model gives about 5.3 kn and a VMG of 3.4 kn at 46° close-hauled, and 6.8 kn on a beam reach. Published figures for the class are 5.4 kn, 3.75 kn and 6.5 kn. Light-air VMG is about 20 % low. Several parameters are tuned without a source and the design doc lists them: [`docs/plans/2026-10-14-dinghy-sim-design.md`](docs/plans/2026-10-14-dinghy-sim-design.md), with the source check in [`docs/research/`](docs/research/2026-10-14-dinghy-physics-validation.md) and a parameter-by-parameter audit in [`docs/research/2026-10-18-parameter-audit.md`](docs/research/2026-10-18-parameter-audit.md). There are no waves, gusts or wind shifts in these runs.
 
 ## How it learns
 
@@ -66,6 +66,8 @@ random weights ─► sail the courses ─► score ─► keep top 10, mutate t
 The loop is `python/sailing/evolve.py`. Episodes run in parallel across processes through a Gymnasium environment (`python/sailing/env.py`) over the same Rust code as the game. A scripted baseline sailor, not trained, is the reference the scores are compared with.
 
 ## Results
+
+The trained boats, the figures and the Training page replays below come from a run evolved on the earlier physics, before the rudder stall and the planing tail were added. Their scores do not correspond to the current simulator, and the boats need retraining.
 
 ![Learning curves](docs/img/learning.png)
 
